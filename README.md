@@ -59,6 +59,7 @@ http://127.0.0.1:5000
 ---
 
 ## Project Structure
+```text
 emergency-aid-optimizer/
 |
 |--- app.py
@@ -86,7 +87,7 @@ emergency-aid-optimizer/
 |
 |--- data/
 | |--- sample_scenarios.json
-
+```
 ---
 
 ## File Descriptions
