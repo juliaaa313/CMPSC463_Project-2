@@ -1,0 +1,60 @@
+{
+  "distributionCenter": "Supply D.C.",
+  "supplies": {
+    "food": 130,
+    "medicine": 100
+  },
+  "locations": [
+    {
+      "id": "L1",
+      "name": "Shelter 1",
+      "type": "shelter",
+      "demandFood": 30,
+      "demandMedicine": 10,
+      "urgency": "High"
+    },
+    {
+      "id": "L2",
+      "name": "Clinic 1",
+      "type": "clinic",
+      "demandFood": 20,
+      "demandMedicine": 40,
+      "urgency": "Critical"
+    },
+    {
+      "id": "L3",
+      "name": "Village 1",
+      "type": "village",
+      "demandFood": 50,
+      "demandMedicine": 15,
+      "urgency": "Medium"
+    }
+  ],
+  "roads": [
+    {
+      "from": "Supply D.C.",
+      "to": "Shelter 1",
+      "distance": 6,
+      "status": "open"
+    },
+    {
+      "from": "Supply D.C.",
+      "to": "Clinic 1",
+      "distance": 10,
+      "status": "damaged"
+    },
+    {
+      "from": "Supply D.C.",
+      "to": "Village 1",
+      "distance": 9,
+      "status": "open"
+    },
+    { "from": "Shelter 1", "to": "Clinic 1", "distance": 4, "status": "open" },
+    {
+      "from": "Clinic 1",
+      "to": "Village 1",
+      "distance": 5,
+      "status": "blocked"
+    }
+  ]
+}

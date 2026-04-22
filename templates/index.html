@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emergency Aid Distribution and Route Optimization System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-dot"></span>
+      <h1>Emergency Aid Distribution and Route Optimization System</h1>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="layout">
+
+      <!-- LEFT PANEL -->
+      <section class="panel">
+        <div class="panel-body">
+          <h2 class="panel-title">Scenario Setup</h2>
+
+          <!-- Distribution Center -->
+          <div class="section">
+            <label class="section-label" for="distribution-center">Aid Distribution Center</label>
+            <input id="distribution-center" type="text" value="Supply D.C." />
+          </div>
+
+          <!-- Available Supplies -->
+          <div class="section">
+            <h3 class="section-heading">Available Supplies</h3>
+            <div class="supply-grid">
+              <div class="form-field">
+                <label for="food">Food</label>
+                <input id="food" type="number" value="500" min="0" />
+              </div>
+              <div class="form-field">
+                <label for="medicine">Medicine</label>
+                <input id="medicine" type="number" value="450" min="0" />
+              </div>
+              <div class="form-field">
+                <label for="water">Water</label>
+                <input id="water" type="number" value="300" min="0" />
+              </div>
+              <div class="form-field">
+                <label for="blankets">Blankets</label>
+                <input id="blankets" type="number" value="200" min="0" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Optimization Mode -->
+          <div class="section">
+            <h3 class="section-heading">Optimization Mode</h3>
+            <div class="mode-grid">
+              <label class="radio-card">
+                <input type="radio" name="optimizationMode" value="balanced" checked />
+                <span>Balanced</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="optimizationMode" value="urgency-first" />
+                <span>Urgency First</span>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="optimizationMode" value="distance-first" />
+                <span>Distance First</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Add Location -->
+          <div class="section">
+            <div class="section-header-row">
+              <h3 class="section-heading">Add Location</h3>
+            </div>
+
+            <div class="location-form-grid">
+              <div class="form-field">
+                <label for="location-name">Location Name</label>
+                <input id="location-name" type="text" placeholder="e.g. Shelter 4" />
+              </div>
+
+              <div class="form-field">
+                <label for="location-type">Type</label>
+                <select id="location-type">
+                  <option value="shelter">Shelter</option>
+                  <option value="clinic">Clinic</option>
+                  <option value="village">Village</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="location-food-demand">Food Demand</label>
+                <input id="location-food-demand" type="number" min="0" placeholder="0" />
+              </div>
+
+              <div class="form-field">
+                <label for="location-medicine-demand">Medicine Demand</label>
+                <input id="location-medicine-demand" type="number" min="0" placeholder="0" />
+              </div>
+
+              <div class="form-field">
+                <label for="location-water-demand">Water Demand</label>
+                <input id="location-water-demand" type="number" min="0" placeholder="0" />
+              </div>
+
+              <div class="form-field">
+                <label for="location-blanket-demand">Blanket Demand</label>
+                <input id="location-blanket-demand" type="number" min="0" placeholder="0" />
+              </div>
+
+              <div class="form-field">
+                <label for="location-urgency">Urgency</label>
+                <select id="location-urgency">
+                  <option value="Critical">Critical</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+            </div>
+
+            <button id="add-location-btn" class="secondary-btn">+ Add Location</button>
+          </div>
+
+          <!-- Locations Table -->
+          <div class="section">
+            <div class="section-header-row">
+              <h3 class="section-heading">Locations & Needs</h3>
+            </div>
+
+            <div class="table-wrap">
+              <table id="locations-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Food</th>
+                    <th>Medicine</th>
+                    <th>Urgency</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="locations-table-body">
+                  <tr>
+                    <td>Shelter 1</td>
+                    <td>Shelter</td>
+                    <td>30</td>
+                    <td>10</td>
+                    <td><span class="urgency-badge urgency-high">High</span></td>
+                    <td><button class="table-btn">Delete</button></td>
+                  </tr>
+                  <tr>
+                    <td>Clinic 1</td>
+                    <td>Clinic</td>
+                    <td>20</td>
+                    <td>40</td>
+                    <td><span class="urgency-badge urgency-critical">Critical</span></td>
+                    <td><button class="table-btn">Delete</button></td>
+                  </tr>
+                  <tr>
+                    <td>Village 1</td>
+                    <td>Village</td>
+                    <td>50</td>
+                    <td>15</td>
+                    <td><span class="urgency-badge urgency-medium">Medium</span></td>
+                    <td><button class="table-btn">Delete</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Add Road -->
+          <div class="section">
+            <div class="section-header-row">
+              <h3 class="section-heading">Add Road</h3>
+            </div>
+
+            <div class="road-form-grid">
+              <div class="form-field">
+                <label for="road-from">From</label>
+                <select id="road-from">
+                  <option>Supply D.C.</option>
+                  <option>Shelter 1</option>
+                  <option>Clinic 1</option>
+                  <option>Village 1</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="road-to">To</label>
+                <select id="road-to">
+                  <option>Shelter 1</option>
+                  <option>Clinic 1</option>
+                  <option>Village 1</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="road-distance">Distance</label>
+                <input id="road-distance" type="number" min="0" placeholder="e.g. 6" />
+              </div>
+
+              <div class="form-field">
+                <label for="road-status">Condition</label>
+                <select id="road-status">
+                  <option value="open">Open</option>
+                  <option value="damaged">Damaged</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+              </div>
+            </div>
+
+            <button id="add-road-btn" class="secondary-btn">+ Add Road</button>
+          </div>
+
+          <!-- Roads Table -->
+          <div class="section">
+            <div class="section-header-row">
+              <h3 class="section-heading">Road Conditions</h3>
+            </div>
+
+            <div class="table-wrap">
+              <table id="roads-table">
+                <thead>
+                  <tr>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Distance</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="roads-table-body">
+                  <tr>
+                    <td>Supply D.C.</td>
+                    <td>Shelter 1</td>
+                    <td>6</td>
+                    <td><span class="status-badge status-open">Open</span></td>
+                    <td><button class="table-btn">Delete</button></td>
+                  </tr>
+                  <tr>
+                    <td>Supply D.C.</td>
+                    <td>Clinic 1</td>
+                    <td>10</td>
+                    <td><span class="status-badge status-damaged">Damaged</span></td>
+                    <td><button class="table-btn">Delete</button></td>
+                  </tr>
+                  <tr>
+                    <td>Clinic 1</td>
+                    <td>Village 1</td>
+                    <td>5</td>
+                    <td><span class="status-badge status-blocked">Blocked</span></td>
+                    <td><button class="table-btn">Delete</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-row">
+            <button id="load-sample-btn" class="ghost-btn">Load Sample Scenario</button>
+            <button id="reset-btn" class="ghost-btn">Reset</button>
+          </div>
+
+          <!-- All Routes Graph -->
+          <div class="section">
+              <h3 class="subheading graph-title-left">All Routes Graph</h3>
+              <div class="graph-box graph-box-left">
+                <svg id="all-routes-graph" viewBox="0 0 700 360" class="graph-svg"></svg>
+              </div>
+          </div>
+          <button id="run-btn" class="primary-btn">Run Optimization</button>
+        </div>
+      </section>
+
+
+      <!-- OPTIMIZATION PANEL -->
+      <section class="panel">
+        <div class="results-header">Optimization Results</div>
+       <div class="panel-body" id="results-container">
+          <div class="empty-state">
+            <p>Run optimization to see results.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
