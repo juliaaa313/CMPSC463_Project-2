@@ -153,5 +153,5 @@ emergency-aid-optimizer/
 
 ### Data
 
-**data/sample_scenarios.json**
+**data/**
 - Stores sample scenarios for testing and demonstrations
