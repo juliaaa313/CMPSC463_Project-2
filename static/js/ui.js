@@ -230,55 +230,61 @@ function renderOptimalRouteGraph(distributionCenter, locations, optimalPaths) {
 
 function generateNodePositions(names, distributionCenter) {
   const positions = {};
+
   const centerX = 350;
-  const topY = 90;
+  const topY = 70;
 
   positions[distributionCenter] = { x: centerX, y: topY };
 
-  const others = names.filter((name) => name !== distributionCenter);
-  const count = others.length;
+  const shelters = [];
+  const clinics = [];
+  const villages = [];
+  const others = [];
 
-  if (count === 0) return positions;
+  names.forEach((name) => {
+    if (name === distributionCenter) return;
 
-  if (count === 1) {
-    positions[others[0]] = { x: centerX, y: 260 };
-    return positions;
-  }
+    const type = inferLocationType(name);
 
-  if (count === 2) {
-    positions[others[0]] = { x: 190, y: 290 };
-    positions[others[1]] = { x: 510, y: 290 };
-    return positions;
-  }
-
-  if (count === 3) {
-    positions[others[0]] = { x: 170, y: 320 };
-    positions[others[1]] = { x: 350, y: 235 };
-    positions[others[2]] = { x: 530, y: 320 };
-    return positions;
-  }
-
-  if (count === 4) {
-    positions[others[0]] = { x: 120, y: 320 };
-    positions[others[1]] = { x: 270, y: 235 };
-    positions[others[2]] = { x: 430, y: 235 };
-    positions[others[3]] = { x: 580, y: 320 };
-    return positions;
-  }
-
-  const radiusX = 250;
-  const radiusY = 135;
-  const baseY = 300;
-
-  others.forEach((name, index) => {
-    const angle = (2 * Math.PI * index) / count;
-    positions[name] = {
-      x: centerX + radiusX * Math.cos(angle - Math.PI / 2),
-      y: baseY + radiusY * Math.sin(angle - Math.PI / 2),
-    };
+    if (type === "Shelter") {
+      shelters.push(name);
+    } else if (type === "Clinic") {
+      clinics.push(name);
+    } else if (type === "Village") {
+      villages.push(name);
+    } else {
+      others.push(name);
+    }
   });
 
+  placeRow(shelters, 180, positions);
+  placeRow(clinics, 300, positions);
+  placeRow(villages, 420, positions);
+  placeRow(others, 520, positions);
+
   return positions;
+}
+
+function placeRow(nodeNames, y, positions) {
+  if (!nodeNames.length) return;
+
+  const centerX = 350;
+
+  if (nodeNames.length === 1) {
+    positions[nodeNames[0]] = { x: centerX, y };
+    return;
+  }
+
+  const rowWidth = Math.min(500, 160 + (nodeNames.length - 1) * 140);
+  const startX = centerX - rowWidth / 2;
+  const step = rowWidth / (nodeNames.length - 1);
+
+  nodeNames.forEach((name, index) => {
+    positions[name] = {
+      x: startX + step * index,
+      y,
+    };
+  });
 }
 
 function getGraphHeight(nodeCount) {
