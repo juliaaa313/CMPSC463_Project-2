@@ -61,7 +61,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       clearRoadForm();
 
       const scenarioSelect = document.getElementById("scenario-select");
-      if (scenarioSelect) scenarioSelect.value = "";
+      if (scenarioSelect) {
+        scenarioSelect.value = "";
+      }
     });
   }
 
@@ -103,44 +105,29 @@ function initializeEmptyState() {
   roads = [];
   previousDistributionCenterName = "D.C.";
 
-  const distributionCenterInput = document.getElementById(
-    "distribution-center",
-  );
-  const foodInput = document.getElementById("food");
-  const medicineInput = document.getElementById("medicine");
-  const waterInput = document.getElementById("water");
-  const blanketsInput = document.getElementById("blankets");
-
-  if (distributionCenterInput) distributionCenterInput.value = "";
-  if (foodInput) foodInput.value = "";
-  if (medicineInput) medicineInput.value = "";
-  if (waterInput) waterInput.value = "";
-  if (blanketsInput) blanketsInput.value = "";
+  setElementValue("distribution-center", "");
+  setElementValue("food", "");
+  setElementValue("medicine", "");
+  setElementValue("water", "");
+  setElementValue("blankets", "");
 
   const balancedMode = document.querySelector(
     'input[name="optimizationMode"][value="balanced"]',
   );
-  if (balancedMode) balancedMode.checked = true;
+  if (balancedMode) {
+    balancedMode.checked = true;
+  }
 }
 
 function applyScenarioToState(scenario) {
-  const distributionCenterInput = document.getElementById(
-    "distribution-center",
-  );
-  const foodInput = document.getElementById("food");
-  const medicineInput = document.getElementById("medicine");
-  const waterInput = document.getElementById("water");
-  const blanketsInput = document.getElementById("blankets");
-
   const distributionCenter = scenario.distributionCenter || "D.C.";
   const supplies = scenario.supplies || {};
 
-  if (distributionCenterInput)
-    distributionCenterInput.value = distributionCenter;
-  if (foodInput) foodInput.value = supplies.food ?? "";
-  if (medicineInput) medicineInput.value = supplies.medicine ?? "";
-  if (waterInput) waterInput.value = supplies.water ?? "";
-  if (blanketsInput) blanketsInput.value = supplies.blankets ?? "";
+  setElementValue("distribution-center", distributionCenter);
+  setElementValue("food", supplies.food ?? "");
+  setElementValue("medicine", supplies.medicine ?? "");
+  setElementValue("water", supplies.water ?? "");
+  setElementValue("blankets", supplies.blankets ?? "");
 
   locations = (scenario.locations || []).map((location, index) => ({
     id: location.id || `L${index + 1}`,
@@ -253,10 +240,10 @@ function getOptimizationMode() {
 
 function getSuppliesFromInputs() {
   return {
-    food: Number(document.getElementById("food")?.value || 0),
-    medicine: Number(document.getElementById("medicine")?.value || 0),
-    water: Number(document.getElementById("water")?.value || 0),
-    blankets: Number(document.getElementById("blankets")?.value || 0),
+    food: getNumberValue("food"),
+    medicine: getNumberValue("medicine"),
+    water: getNumberValue("water"),
+    blankets: getNumberValue("blankets"),
   };
 }
 
@@ -471,6 +458,7 @@ function attachScenarioChangeListeners() {
   const modeInputs = document.querySelectorAll(
     'input[name="optimizationMode"]',
   );
+
   modeInputs.forEach((input) => {
     input.addEventListener("change", () => {
       resetResultsPanel();
@@ -502,21 +490,13 @@ function handleDistributionCenterChange() {
 }
 
 function clearLocationForm() {
-  const nameInput = document.getElementById("location-name");
-  const typeSelect = document.getElementById("location-type");
-  const foodInput = document.getElementById("location-food-demand");
-  const medicineInput = document.getElementById("location-medicine-demand");
-  const waterInput = document.getElementById("location-water-demand");
-  const blanketInput = document.getElementById("location-blanket-demand");
-  const urgencySelect = document.getElementById("location-urgency");
-
-  if (nameInput) nameInput.value = "";
-  if (typeSelect) typeSelect.value = "shelter";
-  if (foodInput) foodInput.value = "";
-  if (medicineInput) medicineInput.value = "";
-  if (waterInput) waterInput.value = "";
-  if (blanketInput) blanketInput.value = "";
-  if (urgencySelect) urgencySelect.value = "Critical";
+  setElementValue("location-name", "");
+  setElementValue("location-type", "shelter");
+  setElementValue("location-food-demand", "");
+  setElementValue("location-medicine-demand", "");
+  setElementValue("location-water-demand", "");
+  setElementValue("location-blanket-demand", "");
+  setElementValue("location-urgency", "Critical");
 }
 
 function clearRoadForm() {
@@ -568,4 +548,15 @@ function showErrorState() {
       <p>Optimization could not be completed.</p>
     </div>
   `;
+}
+
+function setElementValue(id, value) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.value = value;
+  }
+}
+
+function getNumberValue(id) {
+  return Number(document.getElementById(id)?.value || 0);
 }

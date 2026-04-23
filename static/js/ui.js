@@ -4,6 +4,7 @@ function renderOptimizationResult(result, payload) {
 
   const rows = result.results || [];
   const unreachable = result.unreachableLocations || [];
+  const locationTypeMap = buildLocationTypeMap(payload.locations || []);
 
   container.innerHTML = `
     <div class="summary-grid">
@@ -29,8 +30,8 @@ function renderOptimizationResult(result, payload) {
     <div class="remaining-grid">
       <div class="mini-summary-box">Food: ${result.summary?.remainingFood ?? 0}</div>
       <div class="mini-summary-box">Medicine: ${result.summary?.remainingMedicine ?? 0}</div>
-      <div class="mini-summary-box">Water: ${payload.supplies?.water ?? 0}</div>
-      <div class="mini-summary-box">Blankets: ${payload.supplies?.blankets ?? 0}</div>
+      <div class="mini-summary-box">Water: ${result.summary?.remainingWater ?? payload.supplies?.water ?? 0}</div>
+      <div class="mini-summary-box">Blankets: ${result.summary?.remainingBlankets ?? payload.supplies?.blankets ?? 0}</div>
     </div>
 
     <h3 class="subheading">Results Table</h3>
@@ -55,25 +56,25 @@ function renderOptimizationResult(result, payload) {
               ? rows
                   .map(
                     (row) => `
-            <tr>
-              <td>${row.rank ?? "-"}</td>
-              <td>${row.location ?? "-"}</td>
-              <td>${inferLocationType(row.location)}</td>
-              <td>${row.priorityScore ?? "-"}</td>
-              <td>${row.route ?? "-"}</td>
-              <td>${row.travelDistance ?? 0}</td>
-              <td>${row.deliveredFood ?? 0}</td>
-              <td>${row.deliveredMedicine ?? 0}</td>
-              <td>${buildStatusBadge(row.status)}</td>
-            </tr>
-          `,
+                      <tr>
+                        <td>${row.rank ?? "-"}</td>
+                        <td>${row.location ?? "-"}</td>
+                        <td>${locationTypeMap[row.location] || "Location"}</td>
+                        <td>${row.priorityScore ?? "-"}</td>
+                        <td>${row.route ?? "-"}</td>
+                        <td>${row.travelDistance ?? 0}</td>
+                        <td>${row.deliveredFood ?? 0}</td>
+                        <td>${row.deliveredMedicine ?? 0}</td>
+                        <td>${buildStatusBadge(row.status)}</td>
+                      </tr>
+                    `,
                   )
                   .join("")
               : `
-            <tr>
-              <td colspan="9">No optimization results available.</td>
-            </tr>
-          `
+                  <tr>
+                    <td colspan="9">No optimization results available.</td>
+                  </tr>
+                `
           }
         </tbody>
       </table>
@@ -106,67 +107,62 @@ function renderOptimizationResult(result, payload) {
 
   renderOptimalRouteGraph(
     payload.distributionCenter,
-    payload.locations,
+    payload.locations || [],
     result.optimalPaths || [],
   );
 }
+
+/* =========================
+   Graph Rendering
+========================= */
 
 function renderAllRoutesGraph(distributionCenter, locations, roads) {
   const svg = document.getElementById("all-routes-graph");
   if (!svg) return;
 
   const dcName = distributionCenter || "D.C.";
+  const locationTypeMap = buildLocationTypeMap(locations);
   const allNames = [dcName, ...locations.map((loc) => loc.name)];
-  const positions = generateNodePositions(allNames, dcName);
+  const positions = generateNodePositions(allNames, dcName, locationTypeMap);
 
-  const graphHeight = getGraphHeight(allNames.length);
-  svg.setAttribute("viewBox", `0 0 700 ${graphHeight}`);
-
-  const graphBox = svg.closest(".graph-box");
-  if (graphBox) {
-    graphBox.style.height = `${graphHeight}px`;
-  }
-
-  svg.innerHTML = "";
+  prepareGraphSvg(svg, allNames.length);
 
   if (!allNames.length) {
-    svg.innerHTML = `<text x="350" y="180" class="graph-empty-text">No graph data</text>`;
+    renderEmptyGraph(svg);
     return;
   }
 
-  roads.forEach((road) => {
-    const fromName = road.from || "";
-    const toName = road.to || "";
-    const fromPos = positions[fromName];
-    const toPos = positions[toName];
-    if (!fromPos || !toPos) return;
+  let markup = "";
 
-    const fromRadius = getNodeRadius(fromName, dcName);
-    const toRadius = getNodeRadius(toName, dcName);
+  roads.forEach((road) => {
+    const fromPos = positions[road.from];
+    const toPos = positions[road.to];
+    if (!fromPos || !toPos) return;
 
     const { x1, y1, x2, y2 } = getTrimmedLineCoordinates(
       fromPos,
       toPos,
-      fromRadius,
-      toRadius,
+      getNodeRadius(),
+      getNodeRadius(),
     );
 
-    const status = (road.status || "open").toLowerCase();
-    let edgeClass = "graph-edge graph-edge-open";
-
-    if (status === "damaged") edgeClass = "graph-edge graph-edge-damaged";
-    if (status === "blocked") edgeClass = "graph-edge graph-edge-blocked";
-
-    svg.innerHTML += `
-    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${edgeClass}" />
-    ${buildDistanceLabel({ x: x1, y: y1 }, { x: x2, y: y2 }, road.distance)}
-  `;
+    markup += `
+      <line
+        x1="${x1}"
+        y1="${y1}"
+        x2="${x2}"
+        y2="${y2}"
+        class="${getRoadEdgeClass(road.status)}"
+      />
+      ${buildDistanceLabel({ x: x1, y: y1 }, { x: x2, y: y2 }, road.distance)}
+    `;
   });
 
   allNames.forEach((name) => {
-    const node = buildNodeSvg(name, positions[name], dcName);
-    svg.innerHTML += node;
+    markup += buildNodeSvg(name, positions[name], dcName, locationTypeMap);
   });
+
+  svg.innerHTML = markup;
 }
 
 function renderOptimalRouteGraph(distributionCenter, locations, optimalPaths) {
@@ -174,31 +170,25 @@ function renderOptimalRouteGraph(distributionCenter, locations, optimalPaths) {
   if (!svg) return;
 
   const dcName = distributionCenter || "D.C.";
+  const locationTypeMap = buildLocationTypeMap(locations);
   const allNames = [dcName, ...locations.map((loc) => loc.name)];
-  const positions = generateNodePositions(allNames, dcName);
+  const positions = generateNodePositions(allNames, dcName, locationTypeMap);
 
-  const graphHeight = getGraphHeight(allNames.length);
-  svg.setAttribute("viewBox", `0 0 700 ${graphHeight}`);
-
-  const graphBox = svg.closest(".graph-box");
-  if (graphBox) {
-    graphBox.style.height = `${graphHeight}px`;
-  }
-
-  svg.innerHTML = "";
+  prepareGraphSvg(svg, allNames.length);
 
   if (!allNames.length) {
-    svg.innerHTML = `<text x="350" y="180" class="graph-empty-text">No graph data</text>`;
+    renderEmptyGraph(svg);
     return;
   }
 
   const uniqueEdges = new Set();
+  let markup = "";
 
   optimalPaths.forEach((path) => {
     for (let i = 0; i < path.length - 1; i++) {
-      const a = path[i] || "";
-      const b = path[i + 1] || "";
-      uniqueEdges.add(`${a}|||${b}`);
+      const from = path[i] || "";
+      const to = path[i + 1] || "";
+      if (from && to) uniqueEdges.add(`${from}|||${to}`);
     }
   });
 
@@ -208,29 +198,57 @@ function renderOptimalRouteGraph(distributionCenter, locations, optimalPaths) {
     const toPos = positions[to];
     if (!fromPos || !toPos) return;
 
-    const fromRadius = getNodeRadius(from, dcName);
-    const toRadius = getNodeRadius(to, dcName);
-
     const { x1, y1, x2, y2 } = getTrimmedLineCoordinates(
       fromPos,
       toPos,
-      fromRadius,
-      toRadius,
+      getNodeRadius(),
+      getNodeRadius(),
     );
 
-    svg.innerHTML += `
-    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="graph-edge-optimal" />
-  `;
+    markup += `
+      <line
+        x1="${x1}"
+        y1="${y1}"
+        x2="${x2}"
+        y2="${y2}"
+        class="graph-edge-optimal"
+      />
+    `;
   });
+
   allNames.forEach((name) => {
-    const node = buildNodeSvg(name, positions[name], dcName);
-    svg.innerHTML += node;
+    markup += buildNodeSvg(name, positions[name], dcName, locationTypeMap);
   });
+
+  svg.innerHTML = markup;
 }
 
-function generateNodePositions(names, distributionCenter) {
-  const positions = {};
+function prepareGraphSvg(svg, nodeCount) {
+  const graphHeight = getGraphHeight(nodeCount);
+  svg.setAttribute("viewBox", `0 0 700 ${graphHeight}`);
 
+  const graphBox = svg.closest(".graph-box");
+  if (graphBox) {
+    graphBox.style.height = `${graphHeight}px`;
+  }
+
+  svg.innerHTML = "";
+}
+
+function renderEmptyGraph(svg) {
+  svg.innerHTML = `
+    <text x="350" y="180" class="graph-empty-text">
+      No graph data
+    </text>
+  `;
+}
+
+function generateNodePositions(
+  names,
+  distributionCenter,
+  locationTypeMap = {},
+) {
+  const positions = {};
   const centerX = 350;
   const topY = 70;
 
@@ -244,7 +262,7 @@ function generateNodePositions(names, distributionCenter) {
   names.forEach((name) => {
     if (name === distributionCenter) return;
 
-    const type = inferLocationType(name);
+    const type = locationTypeMap[name] || "Location";
 
     if (type === "Shelter") {
       shelters.push(name);
@@ -294,16 +312,15 @@ function getGraphHeight(nodeCount) {
   return 520;
 }
 
-function getNodeRadius(name, distributionCenter) {
-  if (name === distributionCenter) return 20;
-  return 20;
+function getNodeRadius() {
+  return 33;
 }
 
 function getTrimmedLineCoordinates(
   fromPos,
   toPos,
-  fromRadius = 26,
-  toRadius = 26,
+  fromRadius = 33,
+  toRadius = 33,
 ) {
   const dx = toPos.x - fromPos.x;
   const dy = toPos.y - fromPos.y;
@@ -347,55 +364,23 @@ function buildDistanceLabel(fromPos, toPos, distance) {
       y="${midY + 4}"
       class="graph-distance-text"
       text-anchor="middle"
-    >${distance}</text>
+    >${distance ?? 0}</text>
   `;
 }
 
-function getTrimmedLineCoordinates(
-  fromPos,
-  toPos,
-  fromRadius = 26,
-  toRadius = 26,
-) {
-  const dx = toPos.x - fromPos.x;
-  const dy = toPos.y - fromPos.y;
-  const length = Math.sqrt(dx * dx + dy * dy);
+function buildNodeSvg(name, pos, distributionCenter, locationTypeMap = {}) {
+  const type =
+    name === distributionCenter
+      ? "Distribution Center"
+      : locationTypeMap[name] || "Location";
 
-  if (length === 0) {
-    return {
-      x1: fromPos.x,
-      y1: fromPos.y,
-      x2: toPos.x,
-      y2: toPos.y,
-    };
-  }
-
-  const ux = dx / length;
-  const uy = dy / length;
-
-  return {
-    x1: fromPos.x + ux * fromRadius,
-    y1: fromPos.y + uy * fromRadius,
-    x2: toPos.x - ux * toRadius,
-    y2: toPos.y - uy * toRadius,
-  };
-}
-
-function getNodeRadius(name, distributionCenter) {
-  if (name === distributionCenter) return 33;
-  return 33;
-}
-
-function buildNodeSvg(name, pos, distributionCenter) {
-  const type = inferLocationType(name);
   let nodeClass = "graph-node graph-node-village";
   let icon = "📍";
-  let radius = 33;
+  const radius = getNodeRadius();
 
   if (name === distributionCenter) {
     nodeClass = "graph-node graph-node-dc";
     icon = "🏢";
-    radius = 33;
   } else if (type === "Shelter") {
     nodeClass = "graph-node graph-node-shelter";
     icon = "🏠";
@@ -433,6 +418,18 @@ function buildNodeSvg(name, pos, distributionCenter) {
   `;
 }
 
+function getRoadEdgeClass(status) {
+  const value = String(status || "open").toLowerCase();
+
+  if (value === "damaged") return "graph-edge graph-edge-damaged";
+  if (value === "blocked") return "graph-edge graph-edge-blocked";
+  return "graph-edge graph-edge-open";
+}
+
+/* =========================
+   Table Rendering
+========================= */
+
 function renderLocationsTable(locations) {
   const tbody = document.getElementById("locations-table-body");
   if (!tbody) return;
@@ -449,17 +446,19 @@ function renderLocationsTable(locations) {
   tbody.innerHTML = locations
     .map(
       (location) => `
-    <tr>
-      <td>${location.name}</td>
-      <td>${location.type}</td>
-      <td>${location.demandFood}</td>
-      <td>${location.demandMedicine}</td>
-      <td>${buildUrgencyBadge(location.urgency)}</td>
-      <td>
-        <button class="table-btn" onclick="deleteLocation('${location.id}')">Delete</button>
-      </td>
-    </tr>
-  `,
+        <tr>
+          <td>${location.name}</td>
+          <td>${location.type}</td>
+          <td>${location.demandFood}</td>
+          <td>${location.demandMedicine}</td>
+          <td>${buildUrgencyBadge(location.urgency)}</td>
+          <td>
+            <button class="table-btn" onclick="deleteLocation('${location.id}')">
+              Delete
+            </button>
+          </td>
+        </tr>
+      `,
     )
     .join("");
 }
@@ -480,16 +479,18 @@ function renderRoadsTable(roads) {
   tbody.innerHTML = roads
     .map(
       (road) => `
-    <tr>
-      <td>${road.from}</td>
-      <td>${road.to}</td>
-      <td>${road.distance}</td>
-      <td>${buildRoadStatusBadge(road.status)}</td>
-      <td>
-        <button class="table-btn" onclick="deleteRoad('${road.id}')">Delete</button>
-      </td>
-    </tr>
-  `,
+        <tr>
+          <td>${road.from}</td>
+          <td>${road.to}</td>
+          <td>${road.distance}</td>
+          <td>${buildRoadStatusBadge(road.status)}</td>
+          <td>
+            <button class="table-btn" onclick="deleteRoad('${road.id}')">
+              Delete
+            </button>
+          </td>
+        </tr>
+      `,
     )
     .join("");
 }
@@ -504,7 +505,6 @@ function updateRoadDropdowns(locations) {
 
   const previousFrom = fromSelect.value;
   const previousTo = toSelect.value;
-
   const locationNames = locations.map((location) => location.name);
 
   const fromOptions = [distributionCenter, ...locationNames];
@@ -535,8 +535,12 @@ function updateRoadDropdowns(locations) {
   }
 }
 
+/* =========================
+   Badge / Text Helpers
+========================= */
+
 function buildUrgencyBadge(urgency) {
-  const value = (urgency || "").toLowerCase();
+  const value = String(urgency || "").toLowerCase();
 
   if (value === "critical") {
     return `<span class="urgency-badge urgency-critical">Critical</span>`;
@@ -554,7 +558,7 @@ function buildUrgencyBadge(urgency) {
 }
 
 function buildRoadStatusBadge(status) {
-  const value = (status || "").toLowerCase();
+  const value = String(status || "").toLowerCase();
 
   if (value === "open") {
     return `<span class="status-badge status-open">Open</span>`;
@@ -568,13 +572,13 @@ function buildRoadStatusBadge(status) {
 }
 
 function buildStatusBadge(status) {
-  const value = (status || "").toLowerCase();
+  const value = String(status || "").toLowerCase();
 
   if (value === "delivered") {
     return `<span class="result-badge delivered">Fully Allocated</span>`;
   }
 
-  if (value === "partial") {
+  if (value === "partial delivered" || value === "partial") {
     return `<span class="result-badge partial">Partially Allocated</span>`;
   }
 
@@ -583,9 +587,7 @@ function buildStatusBadge(status) {
 
 function buildUnmetDemandHtml(rows) {
   const unmetRows = rows.filter(
-    (row) =>
-      (row.unmetFood && row.unmetFood > 0) ||
-      (row.unmetMedicine && row.unmetMedicine > 0),
+    (row) => (row.unmetFood ?? 0) > 0 || (row.unmetMedicine ?? 0) > 0,
   );
 
   if (!unmetRows.length) {
@@ -601,13 +603,12 @@ function buildUnmetDemandHtml(rows) {
 }
 
 function buildSimulationLogHtml(rows, payload) {
-  const entries = [];
-  entries.push(
+  const entries = [
     `Started optimization using ${formatMode(payload.optimizationMode)} mode.`,
-  );
+  ];
 
   rows.forEach((row) => {
-    if (row.status === "Unreachable") {
+    if (String(row.status) === "Unreachable") {
       entries.push(
         `Could not allocate resources to ${row.location} because it is unreachable.`,
       );
@@ -629,11 +630,14 @@ function formatMode(mode) {
   return "Balanced";
 }
 
-function inferLocationType(locationName) {
-  if (!locationName) return "-";
-  const value = locationName.toLowerCase();
-  if (value.includes("clinic")) return "Clinic";
-  if (value.includes("shelter")) return "Shelter";
-  if (value.includes("village")) return "Village";
-  return "Location";
+function buildLocationTypeMap(locations) {
+  const map = {};
+
+  locations.forEach((location) => {
+    if (location?.name) {
+      map[location.name] = location.type || "Location";
+    }
+  });
+
+  return map;
 }
