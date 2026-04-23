@@ -119,6 +119,14 @@ function renderAllRoutesGraph(distributionCenter, locations, roads) {
   const allNames = [dcName, ...locations.map((loc) => loc.name)];
   const positions = generateNodePositions(allNames, dcName);
 
+  const graphHeight = getGraphHeight(allNames.length);
+  svg.setAttribute("viewBox", `0 0 700 ${graphHeight}`);
+
+  const graphBox = svg.closest(".graph-box");
+  if (graphBox) {
+    graphBox.style.height = `${graphHeight}px`;
+  }
+
   svg.innerHTML = "";
 
   if (!allNames.length) {
@@ -133,6 +141,16 @@ function renderAllRoutesGraph(distributionCenter, locations, roads) {
     const toPos = positions[toName];
     if (!fromPos || !toPos) return;
 
+    const fromRadius = getNodeRadius(fromName, dcName);
+    const toRadius = getNodeRadius(toName, dcName);
+
+    const { x1, y1, x2, y2 } = getTrimmedLineCoordinates(
+      fromPos,
+      toPos,
+      fromRadius,
+      toRadius,
+    );
+
     const status = (road.status || "open").toLowerCase();
     let edgeClass = "graph-edge graph-edge-open";
 
@@ -140,9 +158,9 @@ function renderAllRoutesGraph(distributionCenter, locations, roads) {
     if (status === "blocked") edgeClass = "graph-edge graph-edge-blocked";
 
     svg.innerHTML += `
-      <line x1="${fromPos.x}" y1="${fromPos.y}" x2="${toPos.x}" y2="${toPos.y}" class="${edgeClass}" />
-      ${buildDistanceLabel(fromPos, toPos, road.distance)}
-    `;
+    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${edgeClass}" />
+    ${buildDistanceLabel({ x: x1, y: y1 }, { x: x2, y: y2 }, road.distance)}
+  `;
   });
 
   allNames.forEach((name) => {
@@ -158,6 +176,14 @@ function renderOptimalRouteGraph(distributionCenter, locations, optimalPaths) {
   const dcName = distributionCenter || "D.C.";
   const allNames = [dcName, ...locations.map((loc) => loc.name)];
   const positions = generateNodePositions(allNames, dcName);
+
+  const graphHeight = getGraphHeight(allNames.length);
+  svg.setAttribute("viewBox", `0 0 700 ${graphHeight}`);
+
+  const graphBox = svg.closest(".graph-box");
+  if (graphBox) {
+    graphBox.style.height = `${graphHeight}px`;
+  }
 
   svg.innerHTML = "";
 
@@ -182,11 +208,20 @@ function renderOptimalRouteGraph(distributionCenter, locations, optimalPaths) {
     const toPos = positions[to];
     if (!fromPos || !toPos) return;
 
-    svg.innerHTML += `
-      <line x1="${fromPos.x}" y1="${fromPos.y}" x2="${toPos.x}" y2="${toPos.y}" class="graph-edge-optimal" />
-    `;
-  });
+    const fromRadius = getNodeRadius(from, dcName);
+    const toRadius = getNodeRadius(to, dcName);
 
+    const { x1, y1, x2, y2 } = getTrimmedLineCoordinates(
+      fromPos,
+      toPos,
+      fromRadius,
+      toRadius,
+    );
+
+    svg.innerHTML += `
+    <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="graph-edge-optimal" />
+  `;
+  });
   allNames.forEach((name) => {
     const node = buildNodeSvg(name, positions[name], dcName);
     svg.innerHTML += node;
@@ -195,53 +230,97 @@ function renderOptimalRouteGraph(distributionCenter, locations, optimalPaths) {
 
 function generateNodePositions(names, distributionCenter) {
   const positions = {};
+  const centerX = 350;
+  const topY = 90;
 
-  const svgWidth = 700;
-  const centerX = svgWidth / 2;
-  const centerY = 85;
-
-  positions[distributionCenter] = { x: centerX, y: centerY };
+  positions[distributionCenter] = { x: centerX, y: topY };
 
   const others = names.filter((name) => name !== distributionCenter);
+  const count = others.length;
 
-  if (others.length === 1) {
-    positions[others[0]] = { x: centerX, y: 250 };
+  if (count === 0) return positions;
+
+  if (count === 1) {
+    positions[others[0]] = { x: centerX, y: 260 };
     return positions;
   }
 
-  if (others.length === 2) {
-    positions[others[0]] = { x: 220, y: 250 };
-    positions[others[1]] = { x: 480, y: 250 };
+  if (count === 2) {
+    positions[others[0]] = { x: 190, y: 290 };
+    positions[others[1]] = { x: 510, y: 290 };
     return positions;
   }
 
-  if (others.length === 3) {
-    positions[others[0]] = { x: 160, y: 265 };
-    positions[others[1]] = { x: 350, y: 240 };
-    positions[others[2]] = { x: 540, y: 265 };
+  if (count === 3) {
+    positions[others[0]] = { x: 170, y: 320 };
+    positions[others[1]] = { x: 350, y: 235 };
+    positions[others[2]] = { x: 530, y: 320 };
     return positions;
   }
 
-  if (others.length === 4) {
-    positions[others[0]] = { x: 120, y: 265 };
-    positions[others[1]] = { x: 280, y: 230 };
-    positions[others[2]] = { x: 420, y: 230 };
-    positions[others[3]] = { x: 580, y: 265 };
+  if (count === 4) {
+    positions[others[0]] = { x: 120, y: 320 };
+    positions[others[1]] = { x: 270, y: 235 };
+    positions[others[2]] = { x: 430, y: 235 };
+    positions[others[3]] = { x: 580, y: 320 };
     return positions;
   }
 
-  const radiusX = 240;
-  const radiusY = 105;
+  const radiusX = 250;
+  const radiusY = 135;
+  const baseY = 300;
 
   others.forEach((name, index) => {
-    const angle = (2 * Math.PI * index) / Math.max(others.length, 1);
+    const angle = (2 * Math.PI * index) / count;
     positions[name] = {
       x: centerX + radiusX * Math.cos(angle - Math.PI / 2),
-      y: centerY + 155 + radiusY * Math.sin(angle - Math.PI / 2),
+      y: baseY + radiusY * Math.sin(angle - Math.PI / 2),
     };
   });
 
   return positions;
+}
+
+function getGraphHeight(nodeCount) {
+  if (nodeCount <= 2) return 380;
+  if (nodeCount === 3) return 430;
+  if (nodeCount === 4) return 470;
+  return 520;
+}
+
+function getNodeRadius(name, distributionCenter) {
+  if (name === distributionCenter) return 20;
+  return 20;
+}
+
+function getTrimmedLineCoordinates(
+  fromPos,
+  toPos,
+  fromRadius = 26,
+  toRadius = 26,
+) {
+  const dx = toPos.x - fromPos.x;
+  const dy = toPos.y - fromPos.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+
+  if (length === 0) {
+    return {
+      x1: fromPos.x,
+      y1: fromPos.y,
+      x2: toPos.x,
+      y2: toPos.y,
+    };
+  }
+
+  const ux = dx / length;
+  const uy = dy / length;
+
+  return {
+    x1: fromPos.x + ux * fromRadius,
+    y1: fromPos.y + uy * fromRadius,
+    x2: toPos.x - ux * toRadius,
+    y2: toPos.y - uy * toRadius,
+  };
 }
 
 function buildDistanceLabel(fromPos, toPos, distance) {
@@ -249,21 +328,68 @@ function buildDistanceLabel(fromPos, toPos, distance) {
   const midY = (fromPos.y + toPos.y) / 2;
 
   return `
-    <rect x="${midX - 20}" y="${midY - 13}" width="40" height="24" rx="8" class="graph-distance-box" />
-    <text x="${midX}" y="${midY + 4}" class="graph-distance-text" text-anchor="middle">${distance}</text>
+    <rect
+      x="${midX - 18}"
+      y="${midY - 11}"
+      width="36"
+      height="22"
+      rx="8"
+      class="graph-distance-box"
+    />
+    <text
+      x="${midX}"
+      y="${midY + 4}"
+      class="graph-distance-text"
+      text-anchor="middle"
+    >${distance}</text>
   `;
+}
+
+function getTrimmedLineCoordinates(
+  fromPos,
+  toPos,
+  fromRadius = 26,
+  toRadius = 26,
+) {
+  const dx = toPos.x - fromPos.x;
+  const dy = toPos.y - fromPos.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+
+  if (length === 0) {
+    return {
+      x1: fromPos.x,
+      y1: fromPos.y,
+      x2: toPos.x,
+      y2: toPos.y,
+    };
+  }
+
+  const ux = dx / length;
+  const uy = dy / length;
+
+  return {
+    x1: fromPos.x + ux * fromRadius,
+    y1: fromPos.y + uy * fromRadius,
+    x2: toPos.x - ux * toRadius,
+    y2: toPos.y - uy * toRadius,
+  };
+}
+
+function getNodeRadius(name, distributionCenter) {
+  if (name === distributionCenter) return 33;
+  return 33;
 }
 
 function buildNodeSvg(name, pos, distributionCenter) {
   const type = inferLocationType(name);
   let nodeClass = "graph-node graph-node-village";
   let icon = "📍";
-  let radius = 26;
+  let radius = 33;
 
   if (name === distributionCenter) {
     nodeClass = "graph-node graph-node-dc";
     icon = "🏢";
-    radius = 32;
+    radius = 33;
   } else if (type === "Shelter") {
     nodeClass = "graph-node graph-node-shelter";
     icon = "🏠";
@@ -275,13 +401,29 @@ function buildNodeSvg(name, pos, distributionCenter) {
     icon = "🏘️";
   }
 
-  const labelWidth = Math.max(90, name.length * 8);
+  const labelWidth = Math.max(82, name.length * 7);
+  const labelHeight = 24;
+  const labelY = pos.y + radius - 10;
 
   return `
     <circle cx="${pos.x}" cy="${pos.y}" r="${radius}" class="${nodeClass}" />
     <text x="${pos.x}" y="${pos.y}" class="graph-node-icon">${icon}</text>
-    <rect x="${pos.x - labelWidth / 2}" y="${pos.y + 34}" width="${labelWidth}" height="28" rx="10" class="graph-node-label-box" />
-    <text x="${pos.x}" y="${pos.y + 52}" text-anchor="middle" class="graph-node-label">${name}</text>
+
+    <rect
+      x="${pos.x - labelWidth / 2}"
+      y="${labelY}"
+      width="${labelWidth}"
+      height="${labelHeight}"
+      rx="10"
+      class="graph-node-label-box"
+    />
+
+    <text
+      x="${pos.x}"
+      y="${labelY + 16}"
+      text-anchor="middle"
+      class="graph-node-label"
+    >${name}</text>
   `;
 }
 

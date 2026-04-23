@@ -1,0 +1,64 @@
+{
+  "distributionCenter": "Main Relief Hub",
+  "supplies": {
+    "food": 130,
+    "medicine": 90,
+    "water": 110,
+    "blankets": 45
+  },
+  "locations": [
+    {
+      "id": "L1",
+      "name": "Shelter North",
+      "type": "Shelter",
+      "demandFood": 80,
+      "demandMedicine": 20,
+      "demandWater": 40,
+      "demandBlankets": 15,
+      "urgency": "High"
+    },
+    {
+      "id": "L2",
+      "name": "Clinic South",
+      "type": "Clinic",
+      "demandFood": 30,
+      "demandMedicine": 70,
+      "demandWater": 20,
+      "demandBlankets": 10,
+      "urgency": "Critical"
+    },
+    {
+      "id": "L3",
+      "name": "Village Central",
+      "type": "Village",
+      "demandFood": 60,
+      "demandMedicine": 25,
+      "demandWater": 50,
+      "demandBlankets": 20,
+      "urgency": "Medium"
+    }
+  ],
+  "roads": [
+    {
+      "id": "R1",
+      "from": "Main Relief Hub",
+      "to": "Shelter North",
+      "distance": 5,
+      "status": "open"
+    },
+    {
+      "id": "R2",
+      "from": "Main Relief Hub",
+      "to": "Clinic South",
+      "distance": 8,
+      "status": "open"
+    },
+    {
+      "id": "R3",
+      "from": "Main Relief Hub",
+      "to": "Village Central",
+      "distance": 7,
+      "status": "open"
+    }
+  ]
+}

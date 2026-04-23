@@ -339,6 +339,8 @@ button:active {
   cursor: not-allowed;
 }
 
+
+
 .action-row {
   display: flex;
   gap: 10px;
@@ -508,7 +510,7 @@ tr:last-child td {
 }
 
 .graph-box {
-  height: 420px;
+  height: 500px;
   background: linear-gradient(180deg, #f9fbfd 0%, #f3f7fa 100%);
   overflow: hidden;
 }
@@ -619,8 +621,14 @@ tr:last-child td {
   fill: #243b5a;
 }
 
+.graph-distance-text {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #425a78;
+}
+
 .graph-node-icon {
-  font-size: 20px;
+  font-size: 16px;
   dominant-baseline: middle;
   text-anchor: middle;
 }
@@ -652,7 +660,11 @@ tr:last-child td {
   font-size: 16px;
   font-weight: 600;
 }
-
+.scenario-action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
 @media (max-width: 760px) {
   .supply-grid,
   .location-form-grid,
@@ -665,6 +677,36 @@ tr:last-child td {
 
   .action-row {
     flex-direction: column;
+  }
+
+.scenario-action-row {
+  display: flex;
+  flex-direction: column; 
+  gap: 12px;              
+  margin-bottom: 12px;
+}
+  .scenario-select {
+    flex: 1;
+    height: 40px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: #213652;
+    background: white;
+    outline: none;
+  }
+
+  .scenario-help-text {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .scenario-select:focus {
+    border-color: #8db6ff;
+    box-shadow: 0 0 0 3px rgba(18, 98, 216, 0.12);
   }
 
   .topbar h1 {

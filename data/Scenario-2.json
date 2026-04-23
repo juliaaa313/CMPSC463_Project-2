@@ -1,0 +1,71 @@
+{
+  "distributionCenter": "Main Relief Hub",
+  "supplies": {
+    "food": 420,
+    "medicine": 250,
+    "water": 320,
+    "blankets": 160
+  },
+  "locations": [
+    {
+      "id": "L1",
+      "name": "Shelter Alpha",
+      "type": "Shelter",
+      "demandFood": 70,
+      "demandMedicine": 20,
+      "demandWater": 50,
+      "demandBlankets": 20,
+      "urgency": "High"
+    },
+    {
+      "id": "L2",
+      "name": "Clinic West",
+      "type": "Clinic",
+      "demandFood": 25,
+      "demandMedicine": 85,
+      "demandWater": 20,
+      "demandBlankets": 10,
+      "urgency": "Critical"
+    },
+    {
+      "id": "L3",
+      "name": "Village East",
+      "type": "Village",
+      "demandFood": 90,
+      "demandMedicine": 30,
+      "demandWater": 70,
+      "demandBlankets": 35,
+      "urgency": "Medium"
+    }
+  ],
+  "roads": [
+    {
+      "id": "R1",
+      "from": "Main Relief Hub",
+      "to": "Shelter Alpha",
+      "distance": 7,
+      "status": "open"
+    },
+    {
+      "id": "R2",
+      "from": "Main Relief Hub",
+      "to": "Clinic West",
+      "distance": 12,
+      "status": "blocked"
+    },
+    {
+      "id": "R3",
+      "from": "Shelter Alpha",
+      "to": "Village East",
+      "distance": 8,
+      "status": "open"
+    },
+    {
+      "id": "R4",
+      "from": "Clinic West",
+      "to": "Village East",
+      "distance": 6,
+      "status": "blocked"
+    }
+  ]
+}

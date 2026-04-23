@@ -2,7 +2,7 @@ let locations = [];
 let roads = [];
 let previousDistributionCenterName = "";
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initializeEmptyState();
 
   const runBtn = document.getElementById("run-btn");
@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderAllFrontendState();
   attachScenarioChangeListeners();
+  await populateScenarioDropdown();
 
   if (distributionCenterInput) {
     distributionCenterInput.addEventListener(
@@ -58,13 +59,24 @@ document.addEventListener("DOMContentLoaded", () => {
       resetResultsPanel();
       clearLocationForm();
       clearRoadForm();
+
+      const scenarioSelect = document.getElementById("scenario-select");
+      if (scenarioSelect) scenarioSelect.value = "";
     });
   }
 
   if (loadSampleBtn) {
     loadSampleBtn.addEventListener("click", async () => {
+      const scenarioSelect = document.getElementById("scenario-select");
+      const selectedScenario = scenarioSelect?.value || "";
+
+      if (!selectedScenario) {
+        alert("Please select a scenario first.");
+        return;
+      }
+
       try {
-        const scenario = await loadScenarioFromBackend("sample_scenarios.json");
+        const scenario = await loadScenarioFromBackend(selectedScenario);
         applyScenarioToState(scenario);
         renderAllFrontendState();
         resetResultsPanel();
@@ -72,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
         clearRoadForm();
       } catch (error) {
         console.error(error);
-        alert("Could not load sample scenario.");
+        alert("Could not load the selected scenario.");
       }
     });
   }
@@ -162,6 +174,41 @@ async function loadScenarioFromBackend(fileName) {
   }
 
   return await response.json();
+}
+
+async function populateScenarioDropdown() {
+  const scenarioSelect = document.getElementById("scenario-select");
+  if (!scenarioSelect) return;
+
+  try {
+    const response = await fetch("/list-scenarios");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch scenario list.");
+    }
+
+    const scenarioFiles = await response.json();
+
+    scenarioSelect.innerHTML = `
+      <option value="">Select a scenario</option>
+      ${scenarioFiles
+        .map(
+          (fileName) =>
+            `<option value="${fileName}">${formatScenarioName(fileName)}</option>`,
+        )
+        .join("")}
+    `;
+  } catch (error) {
+    console.error(error);
+    scenarioSelect.innerHTML = `<option value="">No scenarios available</option>`;
+  }
+}
+
+function formatScenarioName(fileName) {
+  return fileName
+    .replace(".json", "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function renderAllFrontendState() {

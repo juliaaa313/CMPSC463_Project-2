@@ -32,5 +32,22 @@ def load_scenario():
     return jsonify(scenario_data)
 
 
+@app.route("/list-scenarios", methods=["GET"])
+def list_scenarios():
+    data_dir = os.path.join(app.root_path, "data")
+
+    if not os.path.exists(data_dir):
+        return jsonify([])
+
+    scenario_files = [
+        file_name
+        for file_name in os.listdir(data_dir)
+        if file_name.endswith(".json")
+    ]
+
+    scenario_files.sort()
+    return jsonify(scenario_files)
+
+
 if __name__ == "__main__":
     app.run(debug=True)
