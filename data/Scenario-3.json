@@ -1,63 +1,142 @@
 {
-  "distributionCenter": "Main Relief Hub",
+  "distributionCenter": "Supply Center",
   "supplies": {
-    "food": 130,
-    "medicine": 90,
-    "water": 110,
-    "blankets": 45
+    "food": 260,
+    "medicine": 170,
+    "water": 220,
+    "blankets": 90
   },
   "locations": [
     {
       "id": "L1",
-      "name": "Shelter North",
+      "name": "Shelter 1",
       "type": "Shelter",
-      "demandFood": 80,
-      "demandMedicine": 20,
-      "demandWater": 40,
-      "demandBlankets": 15,
+      "demandFood": 110,
+      "demandMedicine": 25,
+      "demandWater": 70,
+      "demandBlankets": 30,
       "urgency": "High"
     },
     {
       "id": "L2",
-      "name": "Clinic South",
+      "name": "Shelter 2",
+      "type": "Shelter",
+      "demandFood": 90,
+      "demandMedicine": 20,
+      "demandWater": 60,
+      "demandBlankets": 25,
+      "urgency": "Medium"
+    },
+    {
+      "id": "L3",
+      "name": "Clinic 1",
       "type": "Clinic",
       "demandFood": 30,
-      "demandMedicine": 70,
+      "demandMedicine": 95,
       "demandWater": 20,
       "demandBlankets": 10,
       "urgency": "Critical"
     },
     {
-      "id": "L3",
-      "name": "Village Central",
+      "id": "L4",
+      "name": "Clinic 2",
+      "type": "Clinic",
+      "demandFood": 25,
+      "demandMedicine": 70,
+      "demandWater": 20,
+      "demandBlankets": 10,
+      "urgency": "High"
+    },
+    {
+      "id": "L5",
+      "name": "Village 1",
       "type": "Village",
-      "demandFood": 60,
-      "demandMedicine": 25,
-      "demandWater": 50,
-      "demandBlankets": 20,
+      "demandFood": 100,
+      "demandMedicine": 30,
+      "demandWater": 80,
+      "demandBlankets": 25,
       "urgency": "Medium"
+    },
+    {
+      "id": "L6",
+      "name": "Village 2",
+      "type": "Village",
+      "demandFood": 85,
+      "demandMedicine": 20,
+      "demandWater": 65,
+      "demandBlankets": 20,
+      "urgency": "Low"
     }
   ],
   "roads": [
     {
       "id": "R1",
-      "from": "Main Relief Hub",
-      "to": "Shelter North",
+      "from": "Supply Center",
+      "to": "Shelter 1",
       "distance": 5,
       "status": "open"
     },
     {
       "id": "R2",
-      "from": "Main Relief Hub",
-      "to": "Clinic South",
-      "distance": 8,
+      "from": "Supply Center",
+      "to": "Shelter 2",
+      "distance": 7,
       "status": "open"
     },
     {
       "id": "R3",
-      "from": "Main Relief Hub",
-      "to": "Village Central",
-      "distance": 7,
+      "from": "Supply Center",
+      "to": "Clinic 1",
+      "distance": 8,
+      "status": "open"
+    },
+    {
+      "id": "R4",
+      "from": "Supply Center",
+      "to": "Clinic 2",
+      "distance": 9,
+      "status": "open"
+    },
+    {
+      "id": "R5",
+      "from": "Supply Center",
+      "to": "Village 1",
+      "distance": 6,
+      "status": "open"
+    },
+    {
+      "id": "R6",
+      "from": "Supply Center",
+      "to": "Village 2",
+      "distance": 10,
+      "status": "open"
+    },
+    {
+      "id": "R7",
+      "from": "Shelter 1",
+      "to": "Clinic 1",
+      "distance": 4,
+      "status": "open"
+    },
+    {
+      "id": "R8",
+      "from": "Shelter 2",
+      "to": "Clinic 2",
+      "distance": 4,
+      "status": "open"
+    },
+    {
+      "id": "R9",
+      "from": "Clinic 1",
+      "to": "Village 1",
+      "distance": 3,
+      "status": "open"
+    },
+    {
+      "id": "R10",
+      "from": "Clinic 2",
+      "to": "Village 2",
+      "distance": 4,
       "status": "open"
     }
   ]
