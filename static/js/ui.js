@@ -45,9 +45,11 @@ function renderOptimizationResult(result, payload) {
             <th>Priority</th>
             <th>Route</th>
             <th>Distance</th>
-            <th>Food Delivered</th>
-            <th>Medicine Delivered</th>
-            <th>Allocation Status</th>
+            <th>Food</th>
+            <th>Medicine</th>
+            <th>Water</th>
+            <th>Blankets</th>
+            <th>Supply Plan Status</th>
           </tr>
         </thead>
         <tbody>
@@ -65,6 +67,8 @@ function renderOptimizationResult(result, payload) {
                         <td>${row.travelDistance ?? 0}</td>
                         <td>${row.deliveredFood ?? 0}</td>
                         <td>${row.deliveredMedicine ?? 0}</td>
+                        <td>${row.deliveredWater ?? 0}</td>
+                        <td>${row.deliveredBlankets ?? 0}</td>
                         <td>${buildStatusBadge(row.status)}</td>
                       </tr>
                     `,
@@ -72,7 +76,7 @@ function renderOptimizationResult(result, payload) {
                   .join("")
               : `
                   <tr>
-                    <td colspan="9">No optimization results available.</td>
+                    <td colspan="11">No optimization results available.</td>
                   </tr>
                 `
           }
@@ -437,7 +441,7 @@ function renderLocationsTable(locations) {
   if (!locations.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6">No locations added.</td>
+        <td colspan="8">No locations added.</td>
       </tr>
     `;
     return;
@@ -449,8 +453,10 @@ function renderLocationsTable(locations) {
         <tr>
           <td>${location.name}</td>
           <td>${location.type}</td>
-          <td>${location.demandFood}</td>
-          <td>${location.demandMedicine}</td>
+          <td>${location.demandFood ?? 0}</td>
+          <td>${location.demandMedicine ?? 0}</td>
+          <td>${location.demandWater ?? 0}</td>
+          <td>${location.demandBlankets ?? 0}</td>
           <td>${buildUrgencyBadge(location.urgency)}</td>
           <td>
             <button class="table-btn" onclick="deleteLocation('${location.id}')">
@@ -574,30 +580,45 @@ function buildRoadStatusBadge(status) {
 function buildStatusBadge(status) {
   const value = String(status || "").toLowerCase();
 
-  if (value === "delivered") {
-    return `<span class="result-badge delivered">Fully Allocated</span>`;
+  if (value === "planned full supply") {
+    return `<span class="result-badge delivered">Planned Full Supply</span>`;
   }
 
-  if (value === "partial delivered" || value === "partial") {
-    return `<span class="result-badge partial">Partially Allocated</span>`;
+  if (value === "planned partial supply") {
+    return `<span class="result-badge partial">Planned Partial Supply</span>`;
   }
 
-  return `<span class="result-badge unreachable">Unreachable</span>`;
+  if (value === "no supplies available") {
+    return `<span class="result-badge partial">Reachable, No Supplies Left</span>`;
+  }
+
+  if (value === "unreachable") {
+    return `<span class="result-badge unreachable">Unreachable</span>`;
+  }
+
+  return `<span class="result-badge partial">${status || "Pending"}</span>`;
 }
 
 function buildUnmetDemandHtml(rows) {
   const unmetRows = rows.filter(
-    (row) => (row.unmetFood ?? 0) > 0 || (row.unmetMedicine ?? 0) > 0,
+    (row) =>
+      (row.unmetFood ?? 0) > 0 ||
+      (row.unmetMedicine ?? 0) > 0 ||
+      (row.unmetWater ?? 0) > 0 ||
+      (row.unmetBlankets ?? 0) > 0,
   );
 
   if (!unmetRows.length) {
-    return "All demands were fully allocated in this plan.";
+    return "All listed demands are covered in this supply plan.";
   }
 
   return unmetRows
     .map(
       (row) =>
-        `${row.location}: Unmet Food = ${row.unmetFood || 0}, Unmet Medicine = ${row.unmetMedicine || 0}`,
+        `${row.location}: Unmet Food = ${row.unmetFood || 0}, ` +
+        `Unmet Medicine = ${row.unmetMedicine || 0}, ` +
+        `Unmet Water = ${row.unmetWater || 0}, ` +
+        `Unmet Blankets = ${row.unmetBlankets || 0}`,
     )
     .join("<br>");
 }
@@ -608,13 +629,31 @@ function buildSimulationLogHtml(rows, payload) {
   ];
 
   rows.forEach((row) => {
-    if (String(row.status) === "Unreachable") {
+    const status = String(row.status || "").toLowerCase();
+
+    if (status === "unreachable") {
       entries.push(
-        `Could not allocate resources to ${row.location} because it is unreachable.`,
+        `${row.location} is unreachable because no available route was found.`,
+      );
+    } else if (status === "no supplies available") {
+      entries.push(
+        `${row.location} is reachable, but no supplies were left by this point in the plan.`,
+      );
+    } else if (status === "planned partial supply") {
+      entries.push(
+        `Planned partial supply for ${row.location}: ` +
+          `${row.deliveredFood || 0} food, ` +
+          `${row.deliveredMedicine || 0} medicine, ` +
+          `${row.deliveredWater || 0} water, and ` +
+          `${row.deliveredBlankets || 0} blankets.`,
       );
     } else {
       entries.push(
-        `Allocated ${row.deliveredFood || 0} food and ${row.deliveredMedicine || 0} medicine to ${row.location}.`,
+        `Planned full supply for ${row.location}: ` +
+          `${row.deliveredFood || 0} food, ` +
+          `${row.deliveredMedicine || 0} medicine, ` +
+          `${row.deliveredWater || 0} water, and ` +
+          `${row.deliveredBlankets || 0} blankets.`,
       );
     }
   });

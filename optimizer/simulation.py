@@ -5,15 +5,15 @@ from optimizer.priority import compute_priority
 
 def run_simulation(data):
     """
-    Minimal end-to-end simulation:
+    End-to-end simulation:
     - build graph
     - rank locations by priority
     - find shortest path from DC to each location
-    - deliver as much as possible
-    - return summary
+    - distribute food, medicine, water, and blankets
+    - return delivery plan summary
     """
     distribution_center = data.get("distributionCenter", "Supply D.C.")
-    supplies = data.get("supplies", {"food": 0, "medicine": 0})
+    supplies = data.get("supplies", {})
     locations = data.get("locations", [])
     roads = data.get("roads", [])
 
@@ -22,6 +22,8 @@ def run_simulation(data):
 
     remaining_food = int(supplies.get("food", 0))
     remaining_medicine = int(supplies.get("medicine", 0))
+    remaining_water = int(supplies.get("water", 0))
+    remaining_blankets = int(supplies.get("blankets", 0))
 
     results = []
     optimal_paths = []
@@ -30,49 +32,77 @@ def run_simulation(data):
 
     for rank, location in enumerate(ranked_locations, start=1):
         name = location.get("name", "Unknown Location")
+
         food_need = int(location.get("demandFood", 0))
         medicine_need = int(location.get("demandMedicine", 0))
+        water_need = int(location.get("demandWater", 0))
+        blankets_need = int(location.get("demandBlankets", 0))
 
         distance, path = dijkstra(graph, distribution_center, name)
 
         if distance == float("inf") or not path:
             unreachable_locations.append(name)
-            results.append(
-                build_unreachable_result(
-                    rank=rank,
-                    name=name,
-                    priority_score=location["priorityScore"],
-                    food_need=food_need,
-                    medicine_need=medicine_need,
-                )
-            )
+
+            results.append({
+                "rank": rank,
+                "location": name,
+                "priorityScore": location["priorityScore"],
+                "route": "Unreachable",
+                "travelDistance": 0,
+                "deliveredFood": 0,
+                "deliveredMedicine": 0,
+                "deliveredWater": 0,
+                "deliveredBlankets": 0,
+                "unmetFood": food_need,
+                "unmetMedicine": medicine_need,
+                "unmetWater": water_need,
+                "unmetBlankets": blankets_need,
+                "status": "Unreachable",
+            })
             continue
 
         delivered_food = min(remaining_food, food_need)
         delivered_medicine = min(remaining_medicine, medicine_need)
+        delivered_water = min(remaining_water, water_need)
+        delivered_blankets = min(remaining_blankets, blankets_need)
 
         remaining_food -= delivered_food
         remaining_medicine -= delivered_medicine
+        remaining_water -= delivered_water
+        remaining_blankets -= delivered_blankets
 
         unmet_food = food_need - delivered_food
         unmet_medicine = medicine_need - delivered_medicine
+        unmet_water = water_need - delivered_water
+        unmet_blankets = blankets_need - delivered_blankets
 
-        status = get_delivery_status(unmet_food, unmet_medicine)
-
-        results.append(
-            build_delivery_result(
-                rank=rank,
-                name=name,
-                priority_score=location["priorityScore"],
-                path=path,
-                distance=distance,
-                delivered_food=delivered_food,
-                delivered_medicine=delivered_medicine,
-                unmet_food=unmet_food,
-                unmet_medicine=unmet_medicine,
-                status=status,
-            )
+        status = get_allocation_status(
+            delivered_food,
+            delivered_medicine,
+            delivered_water,
+            delivered_blankets,
+            unmet_food,
+            unmet_medicine,
+            unmet_water,
+            unmet_blankets,
         )
+
+        results.append({
+            "rank": rank,
+            "location": name,
+            "priorityScore": location["priorityScore"],
+            "route": " → ".join(path),
+            "travelDistance": round(distance, 2),
+            "deliveredFood": delivered_food,
+            "deliveredMedicine": delivered_medicine,
+            "deliveredWater": delivered_water,
+            "deliveredBlankets": delivered_blankets,
+            "unmetFood": unmet_food,
+            "unmetMedicine": unmet_medicine,
+            "unmetWater": unmet_water,
+            "unmetBlankets": unmet_blankets,
+            "status": status,
+        })
 
         optimal_paths.append(path)
         total_distance += distance
@@ -84,6 +114,8 @@ def run_simulation(data):
             "totalTravelDistance": round(total_distance, 2),
             "remainingFood": remaining_food,
             "remainingMedicine": remaining_medicine,
+            "remainingWater": remaining_water,
+            "remainingBlankets": remaining_blankets,
             "locationsServed": sum(
                 1 for result in results if result["status"] != "Unreachable"
             ),
@@ -110,48 +142,34 @@ def build_ranked_locations(locations):
     return ranked_locations
 
 
-def build_unreachable_result(rank, name, priority_score, food_need, medicine_need):
-    return {
-        "rank": rank,
-        "location": name,
-        "priorityScore": priority_score,
-        "route": "Unreachable",
-        "travelDistance": 0,
-        "deliveredFood": 0,
-        "deliveredMedicine": 0,
-        "unmetFood": food_need,
-        "unmetMedicine": medicine_need,
-        "status": "Unreachable",
-    }
-
-
-def build_delivery_result(
-    rank,
-    name,
-    priority_score,
-    path,
-    distance,
+def get_allocation_status(
     delivered_food,
     delivered_medicine,
+    delivered_water,
+    delivered_blankets,
     unmet_food,
     unmet_medicine,
-    status,
+    unmet_water,
+    unmet_blankets,
 ):
-    return {
-        "rank": rank,
-        "location": name,
-        "priorityScore": priority_score,
-        "route": " → ".join(path),
-        "travelDistance": round(distance, 2),
-        "deliveredFood": delivered_food,
-        "deliveredMedicine": delivered_medicine,
-        "unmetFood": unmet_food,
-        "unmetMedicine": unmet_medicine,
-        "status": status,
-    }
+    total_delivered = (
+        delivered_food
+        + delivered_medicine
+        + delivered_water
+        + delivered_blankets
+    )
 
+    total_unmet = (
+        unmet_food
+        + unmet_medicine
+        + unmet_water
+        + unmet_blankets
+    )
 
-def get_delivery_status(unmet_food, unmet_medicine):
-    if unmet_food == 0 and unmet_medicine == 0:
-        return "Delivered"
-    return "Partially Delivered"
+    if total_delivered == 0:
+        return "No Supplies Available"
+
+    if total_unmet == 0:
+        return "Planned Full Supply"
+
+    return "Planned Partial Supply"
