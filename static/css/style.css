@@ -377,6 +377,14 @@ tr:last-child td {
   border-bottom: none;
 }
 
+.critical-result-row {
+  background: #fff7f6;
+}
+
+.critical-result-row td:first-child {
+  border-left: 4px solid var(--critical);
+}
+
 .urgency-badge,
 .status-badge,
 .result-badge {

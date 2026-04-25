@@ -5,6 +5,7 @@ function renderOptimizationResult(result, payload) {
   const rows = result.results || [];
   const unreachable = result.unreachableLocations || [];
   const locationTypeMap = buildLocationTypeMap(payload.locations || []);
+  const locationUrgencyMap = buildLocationUrgencyMap(payload.locations || []);
 
   container.innerHTML = `
     <div class="summary-grid">
@@ -12,10 +13,10 @@ function renderOptimizationResult(result, payload) {
         <h4>Total Travel Distance</h4>
         <p>${result.summary?.totalTravelDistance ?? 0} miles</p>
       </div>
-      <div class="summary-card small-card">
-        <h4>Locations Served</h4>
-        <p>${result.summary?.locationsServed ?? 0}</p>
-      </div>
+        <div class="summary-card small-card">
+            <h4>Locations Served</h4>
+            <p>${countServedLocations(rows)} / ${payload.locations?.length ?? 0}</p>
+        </div>
       <div class="summary-card small-card">
         <h4>Unreachable Locations</h4>
         <p>${result.summary?.unreachableCount ?? 0}</p>
@@ -58,17 +59,17 @@ function renderOptimizationResult(result, payload) {
               ? rows
                   .map(
                     (row) => `
-                      <tr>
+                      <tr class="${getResultRowClass(row.location, locationUrgencyMap)}">
                         <td>${row.rank ?? "-"}</td>
                         <td>${row.location ?? "-"}</td>
                         <td>${locationTypeMap[row.location] || "Location"}</td>
                         <td>${row.priorityScore ?? "-"}</td>
                         <td>${row.route ?? "-"}</td>
                         <td>${row.travelDistance ?? 0}</td>
-                        <td>${row.deliveredFood ?? 0}</td>
-                        <td>${row.deliveredMedicine ?? 0}</td>
-                        <td>${row.deliveredWater ?? 0}</td>
-                        <td>${row.deliveredBlankets ?? 0}</td>
+                        <td>${formatDeliveredNeeded(row.deliveredFood, row.unmetFood)}</td>
+                        <td>${formatDeliveredNeeded(row.deliveredMedicine, row.unmetMedicine)}</td>
+                        <td>${formatDeliveredNeeded(row.deliveredWater, row.unmetWater)}</td>
+                        <td>${formatDeliveredNeeded(row.deliveredBlankets, row.unmetBlankets)}</td>
                         <td>${buildStatusBadge(row.status)}</td>
                       </tr>
                     `,
@@ -669,6 +670,26 @@ function formatMode(mode) {
   return "Balanced";
 }
 
+function countServedLocations(rows) {
+  return rows.filter((row) => {
+    const totalDelivered =
+      (row.deliveredFood ?? 0) +
+      (row.deliveredMedicine ?? 0) +
+      (row.deliveredWater ?? 0) +
+      (row.deliveredBlankets ?? 0);
+
+    return totalDelivered > 0;
+  }).length;
+}
+
+function formatDeliveredNeeded(delivered, unmet) {
+  const deliveredAmount = delivered ?? 0;
+  const unmetAmount = unmet ?? 0;
+  const neededAmount = deliveredAmount + unmetAmount;
+
+  return `${deliveredAmount} / ${neededAmount}`;
+}
+
 function buildLocationTypeMap(locations) {
   const map = {};
 
@@ -679,4 +700,26 @@ function buildLocationTypeMap(locations) {
   });
 
   return map;
+}
+
+function buildLocationUrgencyMap(locations) {
+  const map = {};
+
+  locations.forEach((location) => {
+    if (location?.name) {
+      map[location.name] = location.urgency || "Low";
+    }
+  });
+
+  return map;
+}
+
+function getResultRowClass(locationName, locationUrgencyMap) {
+  const urgency = String(locationUrgencyMap[locationName] || "").toLowerCase();
+
+  if (urgency === "critical") {
+    return "critical-result-row";
+  }
+
+  return "";
 }
