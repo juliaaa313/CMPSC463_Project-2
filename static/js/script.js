@@ -2,6 +2,10 @@ let locations = [];
 let roads = [];
 let previousDistributionCenterName = "";
 
+function normalize(value, fallback = "") {
+  return String(value ?? fallback).toLowerCase();
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   initializeEmptyState();
 
@@ -57,8 +61,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       initializeEmptyState();
       renderAllFrontendState();
       resetResultsPanel();
-      clearLocationForm();
-      clearRoadForm();
+      clearForms();
 
       const scenarioSelect = document.getElementById("scenario-select");
       if (scenarioSelect) {
@@ -82,8 +85,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         applyScenarioToState(scenario);
         renderAllFrontendState();
         resetResultsPanel();
-        clearLocationForm();
-        clearRoadForm();
+        clearForms();
       } catch (error) {
         console.error(error);
         alert("Could not load the selected scenario.");
@@ -145,7 +147,7 @@ function applyScenarioToState(scenario) {
     from: road.from,
     to: road.to,
     distance: Number(road.distance || 0),
-    status: (road.status || "open").toLowerCase(),
+    status: normalize(road.status, "open"),
   }));
 
   previousDistributionCenterName = distributionCenter;
@@ -304,7 +306,7 @@ function handleAddRoad() {
   const from = fromSelect?.value || "";
   const to = toSelect?.value || "";
   const distance = Number(distanceInput?.value || 0);
-  const status = (statusSelect?.value || "open").toLowerCase();
+  const status = normalize(statusSelect?.value, "open");
 
   if (!from || !to) {
     alert("Please select both road endpoints.");
@@ -408,7 +410,7 @@ function generateRoadId() {
 }
 
 function formatLocationType(typeValue) {
-  const value = String(typeValue).toLowerCase();
+  const value = normalize(typeValue);
 
   if (value === "clinic") return "Clinic";
   if (value === "village") return "Village";
@@ -515,6 +517,11 @@ function clearRoadForm() {
   if (toSelect && toSelect.options.length > 0) {
     toSelect.selectedIndex = 0;
   }
+}
+
+function clearForms() {
+  clearLocationForm();
+  clearRoadForm();
 }
 
 function resetResultsPanel() {

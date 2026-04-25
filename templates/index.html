@@ -35,13 +35,19 @@
                 <select id="scenario-select" class="scenario-select">
                   <option value="">Select a scenario</option>
                 </select>
-                <button id="load-sample-btn" class="secondary-btn">
+                <button
+                  id="load-sample-btn"
+                  type="button"
+                  class="secondary-btn"
+                >
                   Load Scenario
                 </button>
               </div>
               <!-- Reset -->
               <div class="action-row">
-                <button id="reset-btn" class="secondary-btn">Reset</button>
+                <button id="reset-btn" type="button" class="secondary-btn">
+                  Reset
+                </button>
               </div>
             </div>
 
@@ -53,7 +59,6 @@
               <input
                 id="distribution-center"
                 type="text"
-                value=""
                 placeholder="Enter distribution center name"
               />
             </div>
@@ -64,43 +69,19 @@
               <div class="supply-grid">
                 <div class="form-field">
                   <label for="food">Food</label>
-                  <input
-                    id="food"
-                    type="number"
-                    value=""
-                    min="0"
-                    placeholder="0"
-                  />
+                  <input id="food" type="number" min="0" placeholder="0" />
                 </div>
                 <div class="form-field">
                   <label for="medicine">Medicine</label>
-                  <input
-                    id="medicine"
-                    type="number"
-                    value=""
-                    min="0"
-                    placeholder="0"
-                  />
+                  <input id="medicine" type="number" min="0" placeholder="0" />
                 </div>
                 <div class="form-field">
                   <label for="water">Water</label>
-                  <input
-                    id="water"
-                    type="number"
-                    value=""
-                    min="0"
-                    placeholder="0"
-                  />
+                  <input id="water" type="number" min="0" placeholder="0" />
                 </div>
                 <div class="form-field">
                   <label for="blankets">Blankets</label>
-                  <input
-                    id="blankets"
-                    type="number"
-                    value=""
-                    min="0"
-                    placeholder="0"
-                  />
+                  <input id="blankets" type="number" min="0" placeholder="0" />
                 </div>
               </div>
             </div>
@@ -215,7 +196,7 @@
                 </div>
               </div>
 
-              <button id="add-location-btn" class="secondary-btn">
+              <button id="add-location-btn" type="button" class="secondary-btn">
                 + Add Location
               </button>
             </div>
@@ -257,7 +238,7 @@
                 </div>
               </div>
 
-              <button id="add-road-btn" class="secondary-btn">
+              <button id="add-road-btn" type="button" class="secondary-btn">
                 + Add Road
               </button>
             </div>
@@ -321,7 +302,9 @@
               </div>
             </div>
 
-            <button id="run-btn" class="primary-btn">Run Optimization</button>
+            <button id="run-btn" type="button" class="primary-btn">
+              Run Optimization
+            </button>
           </div>
         </section>
 

@@ -1,15 +1,16 @@
 from optimizer.graph import build_graph
 from optimizer.dijkstra import dijkstra
-from optimizer.priority import compute_priority
+from optimizer.priority import compute_priority, URGENCY_WEIGHTS
 
 
 def run_simulation(data):
     """
     End-to-end simulation:
     - build graph
-    - rank locations based on selected optimization mode
-    - find shortest path from DC to each location
+    - choose delivery order based on optimization mode
+    - create a sequential route
     - distribute food, medicine, water, and blankets
+    - return to the distribution center after the last delivery
     - return delivery plan summary
     """
     distribution_center = data.get("distributionCenter", "Supply D.C.")
@@ -19,13 +20,7 @@ def run_simulation(data):
     roads = data.get("roads", [])
 
     graph = build_graph(roads)
-
-    ranked_locations = build_ranked_locations(
-        locations,
-        graph,
-        distribution_center,
-        optimization_mode,
-    )
+    remaining_locations = prepare_locations(locations)
 
     remaining_food = int(supplies.get("food", 0))
     remaining_medicine = int(supplies.get("medicine", 0))
@@ -37,36 +32,45 @@ def run_simulation(data):
     total_distance = 0
     unreachable_locations = []
 
-    for rank, location in enumerate(ranked_locations, start=1):
-        name = location.get("name", "Unknown Location")
+    current_position = distribution_center
+    rank = 1
 
-        food_need = int(location.get("demandFood", 0))
-        medicine_need = int(location.get("demandMedicine", 0))
-        water_need = int(location.get("demandWater", 0))
-        blankets_need = int(location.get("demandBlankets", 0))
+    while remaining_locations:
+        next_location, distance, path = choose_next_location(
+            remaining_locations,
+            graph,
+            current_position,
+            optimization_mode,
+        )
 
-        distance, path = dijkstra(graph, distribution_center, name)
+        if next_location is None:
+            for location in remaining_locations:
+                name = location.get("name", "Unknown Location")
+                food_need, medicine_need, water_need, blankets_need = get_location_needs(location)
 
-        if distance == float("inf") or not path:
-            unreachable_locations.append(name)
+                unreachable_locations.append(name)
 
-            results.append({
-                "rank": rank,
-                "location": name,
-                "priorityScore": location["priorityScore"],
-                "route": "Unreachable",
-                "travelDistance": 0,
-                "deliveredFood": 0,
-                "deliveredMedicine": 0,
-                "deliveredWater": 0,
-                "deliveredBlankets": 0,
-                "unmetFood": food_need,
-                "unmetMedicine": medicine_need,
-                "unmetWater": water_need,
-                "unmetBlankets": blankets_need,
-                "status": "Unreachable",
-            })
-            continue
+                results.append({
+                    "rank": None,
+                    "location": name,
+                    "priorityScore": location["priorityScore"],
+                    "route": "Unreachable",
+                    "travelDistance": 0,
+                    "deliveredFood": 0,
+                    "deliveredMedicine": 0,
+                    "deliveredWater": 0,
+                    "deliveredBlankets": 0,
+                    "unmetFood": food_need,
+                    "unmetMedicine": medicine_need,
+                    "unmetWater": water_need,
+                    "unmetBlankets": blankets_need,
+                    "status": "Unreachable",
+                })
+
+            break
+
+        name = next_location.get("name", "Unknown Location")
+        food_need, medicine_need, water_need, blankets_need = get_location_needs(next_location)
 
         delivered_food = min(remaining_food, food_need)
         delivered_medicine = min(remaining_medicine, medicine_need)
@@ -97,7 +101,7 @@ def run_simulation(data):
         results.append({
             "rank": rank,
             "location": name,
-            "priorityScore": location["priorityScore"],
+            "priorityScore": next_location["priorityScore"],
             "route": " → ".join(path),
             "travelDistance": round(distance, 2),
             "deliveredFood": delivered_food,
@@ -107,12 +111,34 @@ def run_simulation(data):
             "unmetFood": unmet_food,
             "unmetMedicine": unmet_medicine,
             "unmetWater": unmet_water,
-            "unmetBlankets": unmet_blankets,
+            "unmetBlanklets": unmet_blankets,
             "status": status,
         })
 
         optimal_paths.append(path)
         total_distance += distance
+        current_position = name
+
+        remaining_locations = [
+            location
+            for location in remaining_locations
+            if location.get("name") != name
+        ]
+
+        rank += 1
+
+    return_distance, return_path = dijkstra(
+        graph,
+        current_position,
+        distribution_center,
+    )
+
+    if current_position != distribution_center:
+        if return_path:
+            optimal_paths.append(return_path)
+            total_distance += return_distance
+        else:
+            unreachable_locations.append("Return to Distribution Center")
 
     return {
         "distributionCenter": distribution_center,
@@ -132,64 +158,83 @@ def run_simulation(data):
     }
 
 
-def build_ranked_locations(locations, graph, distribution_center, optimization_mode):
-    ranked_locations = []
+def prepare_locations(locations):
+    prepared_locations = []
 
     for location in locations:
         location_copy = dict(location)
-        name = location_copy.get("name", "")
-
-        distance, _ = dijkstra(graph, distribution_center, name)
-
         location_copy["priorityScore"] = compute_priority(location_copy)
-        location_copy["distanceFromDC"] = distance
+        prepared_locations.append(location_copy)
 
-        ranked_locations.append(location_copy)
+    return prepared_locations
+
+
+def choose_next_location(locations, graph, current_position, optimization_mode):
+    candidates = []
+
+    for location in locations:
+        name = location.get("name", "")
+        distance, path = dijkstra(graph, current_position, name)
+
+        if distance == float("inf") or not path:
+            continue
+
+        candidates.append({
+            "location": location,
+            "distance": distance,
+            "path": path,
+        })
+
+    if not candidates:
+        return None, 0, []
 
     if optimization_mode == "urgency-first":
-        ranked_locations.sort(
-            key=lambda location: (
-                get_urgency_weight(location.get("urgency", "Low")),
-                location["priorityScore"],
-                -safe_distance(location["distanceFromDC"]),
+        candidates.sort(
+            key=lambda candidate: (
+                get_urgency_score(candidate["location"].get("urgency", "low")),
+                candidate["location"]["priorityScore"],
+                -candidate["distance"],
             ),
             reverse=True,
         )
 
     elif optimization_mode == "distance-first":
-        ranked_locations.sort(
-            key=lambda location: (
-                safe_distance(location["distanceFromDC"]),
-                -location["priorityScore"],
+        candidates.sort(
+            key=lambda candidate: (
+                candidate["distance"],
+                -candidate["location"]["priorityScore"],
             ),
         )
 
     else:
-        ranked_locations.sort(
-            key=lambda location: (
-                location["priorityScore"] - safe_distance(location["distanceFromDC"]),
+        candidates.sort(
+            key=lambda candidate: compute_balanced_score(
+                candidate["location"],
+                candidate["distance"],
             ),
             reverse=True,
         )
 
-    return ranked_locations
+    best = candidates[0]
+    return best["location"], best["distance"], best["path"]
 
 
-def get_urgency_weight(urgency):
-    urgency_weights = {
-        "critical": 4,
-        "high": 3,
-        "medium": 2,
-        "low": 1,
-    }
-
-    return urgency_weights.get(str(urgency).lower(), 1)
+def compute_balanced_score(location, distance):
+    return location["priorityScore"] - distance
 
 
-def safe_distance(distance):
-    if distance == float("inf"):
-        return 999999
-    return distance
+def get_urgency_score(urgency):
+    urgency = str(urgency).lower()
+    return URGENCY_WEIGHTS.get(urgency, URGENCY_WEIGHTS["low"])
+
+
+def get_location_needs(location):
+    food_need = int(location.get("demandFood", 0))
+    medicine_need = int(location.get("demandMedicine", 0))
+    water_need = int(location.get("demandWater", 0))
+    blankets_need = int(location.get("demandBlankets", 0))
+
+    return food_need, medicine_need, water_need, blankets_need
 
 
 def count_served_locations(results):

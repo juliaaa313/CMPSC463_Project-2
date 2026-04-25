@@ -176,14 +176,8 @@ select:focus {
   gap: 14px;
 }
 
-.supply-grid {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.location-form-grid {
-  grid-template-columns: repeat(2, 1fr);
-}
-
+.supply-grid,
+.location-form-grid,
 .road-form-grid {
   grid-template-columns: repeat(2, 1fr);
 }
@@ -192,10 +186,7 @@ select:focus {
   grid-template-columns: repeat(3, 1fr);
 }
 
-.summary-grid {
-  grid-template-columns: repeat(2, 1fr);
-}
-
+.summary-grid,
 .remaining-grid {
   grid-template-columns: repeat(2, 1fr);
 }
@@ -226,6 +217,7 @@ select:focus {
 /* =========================
    Buttons
 ========================= */
+
 button {
   cursor: pointer;
   transition: all 0.2s ease;
@@ -237,7 +229,6 @@ button:active {
 
 .primary-btn,
 .secondary-btn,
-.ghost-btn,
 .table-btn {
   border: none;
   font-weight: 700;
@@ -288,31 +279,6 @@ button:active {
 .secondary-btn:disabled {
   background: var(--gray3);
   color: white;
-  cursor: not-allowed;
-}
-
-.ghost-btn {
-  height: 40px;
-  border-radius: 10px;
-  background: white;
-  border: 1px solid var(--line);
-  color: #33547c;
-  font-size: 14px;
-  padding: 0 16px;
-}
-
-.ghost-btn:hover {
-  background: var(--gray1);
-}
-
-.ghost-btn:active {
-  background: var(--gray2);
-}
-
-.ghost-btn:disabled {
-  background: var(--gray3);
-  color: white;
-  border-color: var(--gray3);
   cursor: not-allowed;
 }
 
@@ -580,6 +546,7 @@ tr:last-child td {
   stroke: #16a34a;
   stroke-width: 6;
   stroke-linecap: round;
+  fill: none;
 }
 
 .graph-distance-box {
@@ -640,6 +607,38 @@ tr:last-child td {
   text-anchor: middle;
 }
 
+.route-step-box {
+  fill: white;
+  stroke: #7b5c07;
+  stroke-width: 1.5;
+}
+
+.route-step-text {
+  font-size: 10px;
+  font-weight: 700;
+  fill: #574104;
+}
+
+.visit-badge {
+  fill: #7b5c07;
+  stroke: white;
+  stroke-width: 2;
+}
+
+.visit-badge-start {
+  fill: #7b5c07;
+}
+
+.visit-badge-text {
+  font-size: 10px;
+  font-weight: 700;
+  fill: white;
+}
+
+.route-summary-box {
+  margin-top: 12px;
+}
+
 .empty-state,
 .loading-state {
   min-height: 220px;
@@ -661,7 +660,7 @@ tr:last-child td {
   font-weight: 600;
 }
 
-/* Keep scenario styles exactly as important UI-specific rules */
+/* Scenario styles */
 .scenario-action-row {
   display: flex;
   flex-direction: column;

@@ -5,13 +5,23 @@ URGENCY_WEIGHTS = {
     "low": 20,
 }
 
+RESOURCE_WEIGHTS = {
+    "food": 1.0,
+    "medicine": 1.2,
+    "water": 1.1,
+    "blankets": 0.8,
+}
+
 
 def compute_priority(location):
-    urgency = location.get("urgency", "low").lower()
-    food_demand = location.get("demandFood", 0)
-    medicine_demand = location.get("demandMedicine", 0)
+    urgency = str(location.get("urgency", "low")).lower()
+    urgency_score = URGENCY_WEIGHTS.get(urgency, URGENCY_WEIGHTS["low"])
 
-    urgency_score = URGENCY_WEIGHTS.get(urgency, 20)
-    demand_bonus = food_demand + medicine_demand
+    demand_score = 0
 
-    return urgency_score + demand_bonus
+    for resource, weight in RESOURCE_WEIGHTS.items():
+        key = f"demand{resource.capitalize()}"
+        demand = location.get(key, 0)
+        demand_score += demand * weight
+
+    return urgency_score + demand_score

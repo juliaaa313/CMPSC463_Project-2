@@ -1,11 +1,23 @@
+function normalize(value, defaultValue = "") {
+  return String(value ?? defaultValue).toLowerCase();
+}
+
+function capitalize(value, fallback = "") {
+  const text = String(value || fallback);
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function renderOptimizationResult(result, payload) {
   const container = document.getElementById("results-container");
   if (!container) return;
 
   const rows = result.results || [];
   const unreachable = result.unreachableLocations || [];
-  const locationTypeMap = buildLocationTypeMap(payload.locations || []);
-  const locationUrgencyMap = buildLocationUrgencyMap(payload.locations || []);
+  const locations = payload.locations || [];
+  const supplies = payload.supplies || {};
+
+  const locationTypeMap = buildLocationTypeMap(locations);
+  const locationUrgencyMap = buildLocationUrgencyMap(locations);
 
   container.innerHTML = `
     <div class="summary-grid">
@@ -13,10 +25,10 @@ function renderOptimizationResult(result, payload) {
         <h4>Total Travel Distance</h4>
         <p>${result.summary?.totalTravelDistance ?? 0} miles</p>
       </div>
-        <div class="summary-card small-card">
-            <h4>Locations Served</h4>
-            <p>${countServedLocations(rows)} / ${payload.locations?.length ?? 0}</p>
-        </div>
+      <div class="summary-card small-card">
+        <h4>Locations Served</h4>
+        <p>${countServedLocations(rows)} / ${locations.length}</p>
+      </div>
       <div class="summary-card small-card">
         <h4>Unreachable Locations</h4>
         <p>${result.summary?.unreachableCount ?? 0}</p>
@@ -31,8 +43,8 @@ function renderOptimizationResult(result, payload) {
     <div class="remaining-grid">
       <div class="mini-summary-box">Food: ${result.summary?.remainingFood ?? 0}</div>
       <div class="mini-summary-box">Medicine: ${result.summary?.remainingMedicine ?? 0}</div>
-      <div class="mini-summary-box">Water: ${result.summary?.remainingWater ?? payload.supplies?.water ?? 0}</div>
-      <div class="mini-summary-box">Blankets: ${result.summary?.remainingBlankets ?? payload.supplies?.blankets ?? 0}</div>
+      <div class="mini-summary-box">Water: ${result.summary?.remainingWater ?? supplies.water ?? 0}</div>
+      <div class="mini-summary-box">Blankets: ${result.summary?.remainingBlankets ?? supplies.blankets ?? 0}</div>
     </div>
 
     <h3 class="subheading">Results Table</h3>
@@ -54,33 +66,7 @@ function renderOptimizationResult(result, payload) {
           </tr>
         </thead>
         <tbody>
-          ${
-            rows.length
-              ? rows
-                  .map(
-                    (row) => `
-                      <tr class="${getResultRowClass(row.location, locationUrgencyMap)}">
-                        <td>${row.rank ?? "-"}</td>
-                        <td>${row.location ?? "-"}</td>
-                        <td>${locationTypeMap[row.location] || "Location"}</td>
-                        <td>${row.priorityScore ?? "-"}</td>
-                        <td>${row.route ?? "-"}</td>
-                        <td>${row.travelDistance ?? 0}</td>
-                        <td>${formatDeliveredNeeded(row.deliveredFood, row.unmetFood)}</td>
-                        <td>${formatDeliveredNeeded(row.deliveredMedicine, row.unmetMedicine)}</td>
-                        <td>${formatDeliveredNeeded(row.deliveredWater, row.unmetWater)}</td>
-                        <td>${formatDeliveredNeeded(row.deliveredBlankets, row.unmetBlankets)}</td>
-                        <td>${buildStatusBadge(row.status)}</td>
-                      </tr>
-                    `,
-                  )
-                  .join("")
-              : `
-                  <tr>
-                    <td colspan="11">No optimization results available.</td>
-                  </tr>
-                `
-          }
+          ${buildResultsTableRows(rows, locationTypeMap, locationUrgencyMap)}
         </tbody>
       </table>
     </div>
@@ -108,13 +94,45 @@ function renderOptimizationResult(result, payload) {
     <div class="graph-box optimal-graph-box">
       <svg id="optimal-route-graph" viewBox="0 0 700 360" class="graph-svg"></svg>
     </div>
+    <div id="optimal-route-summary" class="info-box route-summary-box"></div>
   `;
 
   renderOptimalRouteGraph(
     payload.distributionCenter,
-    payload.locations || [],
+    locations,
     result.optimalPaths || [],
+    rows,
   );
+}
+
+function buildResultsTableRows(rows, locationTypeMap, locationUrgencyMap) {
+  if (!rows.length) {
+    return `
+      <tr>
+        <td colspan="11">No optimization results available.</td>
+      </tr>
+    `;
+  }
+
+  return rows
+    .map(
+      (row) => `
+        <tr class="${getResultRowClass(row.location, locationUrgencyMap)}">
+          <td>${row.rank ?? "-"}</td>
+          <td>${row.location ?? "-"}</td>
+          <td>${locationTypeMap[row.location] || "Location"}</td>
+          <td>${row.priorityScore ?? "-"}</td>
+          <td>${row.route ?? "-"}</td>
+          <td>${row.travelDistance ?? 0}</td>
+          <td>${formatDeliveredNeeded(row.deliveredFood, row.unmetFood)}</td>
+          <td>${formatDeliveredNeeded(row.deliveredMedicine, row.unmetMedicine)}</td>
+          <td>${formatDeliveredNeeded(row.deliveredWater, row.unmetWater)}</td>
+          <td>${formatDeliveredNeeded(row.deliveredBlankets, row.unmetBlankets)}</td>
+          <td>${buildStatusBadge(row.status)}</td>
+        </tr>
+      `,
+    )
+    .join("");
 }
 
 /* =========================
@@ -170,13 +188,19 @@ function renderAllRoutesGraph(distributionCenter, locations, roads) {
   svg.innerHTML = markup;
 }
 
-function renderOptimalRouteGraph(distributionCenter, locations, optimalPaths) {
+function renderOptimalRouteGraph(
+  distributionCenter,
+  locations,
+  optimalPaths,
+  rows = [],
+) {
   const svg = document.getElementById("optimal-route-graph");
   if (!svg) return;
 
   const dcName = distributionCenter || "D.C.";
   const locationTypeMap = buildLocationTypeMap(locations);
   const allNames = [dcName, ...locations.map((loc) => loc.name)];
+  const deliveryOrder = buildDeliveryOrderMap(rows);
   const positions = generateNodePositions(allNames, dcName, locationTypeMap);
 
   prepareGraphSvg(svg, allNames.length);
@@ -186,46 +210,182 @@ function renderOptimalRouteGraph(distributionCenter, locations, optimalPaths) {
     return;
   }
 
-  const uniqueEdges = new Set();
-  let markup = "";
+  let edgeMarkup = "";
+  let labelMarkup = "";
+  let nodeMarkup = "";
 
-  optimalPaths.forEach((path) => {
+  optimalPaths.forEach((path, segmentIndex) => {
+    if (!path || path.length < 2) return;
+
+    const isReturnSegment =
+      path[path.length - 1] === dcName &&
+      segmentIndex === optimalPaths.length - 1;
+
     for (let i = 0; i < path.length - 1; i++) {
-      const from = path[i] || "";
-      const to = path[i + 1] || "";
-      if (from && to) uniqueEdges.add(`${from}|||${to}`);
+      const from = path[i];
+      const to = path[i + 1];
+
+      const fromPos = positions[from];
+      const toPos = positions[to];
+      if (!fromPos || !toPos) continue;
+
+      const { x1, y1, x2, y2 } = getTrimmedLineCoordinates(
+        fromPos,
+        toPos,
+        getNodeRadius(),
+        getNodeRadius(),
+      );
+
+      edgeMarkup += `
+        <line
+          x1="${x1}"
+          y1="${y1}"
+          x2="${x2}"
+          y2="${y2}"
+          class="graph-edge-optimal"
+        />
+      `;
+
+      if (isReturnSegment && i === path.length - 2) {
+        labelMarkup += buildReturnEdgeLabel({ x: x1, y: y1 }, { x: x2, y: y2 });
+      }
     }
   });
 
-  uniqueEdges.forEach((edgeKey) => {
-    const [from, to] = edgeKey.split("|||");
-    const fromPos = positions[from];
-    const toPos = positions[to];
-    if (!fromPos || !toPos) return;
-
-    const { x1, y1, x2, y2 } = getTrimmedLineCoordinates(
-      fromPos,
-      toPos,
-      getNodeRadius(),
-      getNodeRadius(),
-    );
-
-    markup += `
-      <line
-        x1="${x1}"
-        y1="${y1}"
-        x2="${x2}"
-        y2="${y2}"
-        class="graph-edge-optimal"
-      />
-    `;
-  });
-
   allNames.forEach((name) => {
-    markup += buildNodeSvg(name, positions[name], dcName, locationTypeMap);
+    nodeMarkup += buildNodeSvg(name, positions[name], dcName, locationTypeMap);
+
+    if (name === dcName) {
+      nodeMarkup += buildVisitOrderBadge(positions[name], "Start", true);
+    } else if (deliveryOrder[name]) {
+      nodeMarkup += buildVisitOrderBadge(
+        positions[name],
+        deliveryOrder[name],
+        false,
+      );
+    }
   });
 
-  svg.innerHTML = markup;
+  svg.innerHTML = edgeMarkup + labelMarkup + nodeMarkup;
+
+  renderOptimalRouteSummary(dcName, optimalPaths, rows);
+}
+
+function buildReturnEdgeLabel(fromPos, toPos) {
+  const t = 0.7;
+  const midX = fromPos.x + (toPos.x - fromPos.x) * t;
+  const midY = fromPos.y + (toPos.y - fromPos.y) * t;
+
+  const labelWidth = 84;
+  const labelHeight = 24;
+
+  return `
+    <rect
+      x="${midX - labelWidth / 2}"
+      y="${midY - labelHeight / 2}"
+      width="${labelWidth}"
+      height="${labelHeight}"
+      rx="10"
+      class="route-step-box"
+    />
+    <text
+      x="${midX}"
+      y="${midY + 4}"
+      text-anchor="middle"
+      class="route-step-text"
+    >Return to DC</text>
+  `;
+}
+
+function renderOptimalRouteSummary(distributionCenter, optimalPaths, rows) {
+  const summaryBox = document.getElementById("optimal-route-summary");
+  if (!summaryBox) return;
+
+  const deliveryOrder = rows
+    .filter((row) => {
+      const status = normalize(row.status);
+      return status !== "unreachable" && row.route !== "Unreachable";
+    })
+    .map((row) => row.location);
+
+  const actualTravelPath = buildActualTravelPath(optimalPaths);
+
+  summaryBox.innerHTML = `
+    <strong>Delivery Order:</strong>
+    ${[distributionCenter, ...deliveryOrder, distributionCenter].join(" → ")}
+    <br>
+    <strong>Actual Travel Path:</strong>
+    ${actualTravelPath.join(" → ")}
+    <br>
+    <span class="muted-small">
+      Note: some locations may appear in the travel path before their delivery number because the route may pass through them to reach another location first.
+    </span>
+  `;
+}
+
+function buildActualTravelPath(optimalPaths) {
+  const fullPath = [];
+
+  optimalPaths.forEach((path) => {
+    if (!path || !path.length) return;
+
+    path.forEach((node, index) => {
+      const isDuplicateStart =
+        fullPath.length > 0 &&
+        index === 0 &&
+        fullPath[fullPath.length - 1] === node;
+
+      if (!isDuplicateStart) {
+        fullPath.push(node);
+      }
+    });
+  });
+
+  return fullPath;
+}
+
+function buildDeliveryOrderMap(rows) {
+  const orderMap = {};
+  let order = 1;
+
+  rows.forEach((row) => {
+    const status = normalize(row.status);
+
+    if (
+      status !== "unreachable" &&
+      row.location &&
+      row.route !== "Unreachable"
+    ) {
+      orderMap[row.location] = order;
+      order += 1;
+    }
+  });
+
+  return orderMap;
+}
+
+function buildVisitOrderBadge(pos, order, isDistributionCenter) {
+  const badgeText = String(order);
+  const badgeWidth = badgeText.length > 2 ? 54 : 30;
+  const badgeX = pos.x - 20;
+  const badgeY = pos.y - 25;
+
+  return `
+    <rect
+      x="${badgeX - badgeWidth / 2}"
+      y="${badgeY - 14}"
+      width="${badgeWidth}"
+      height="26"
+      rx="13"
+      class="${isDistributionCenter ? "visit-badge visit-badge-start" : "visit-badge"}"
+    />
+    <text
+      x="${badgeX}"
+      y="${badgeY + 4}"
+      text-anchor="middle"
+      class="visit-badge-text"
+    >${badgeText}</text>
+  `;
 }
 
 function prepareGraphSvg(svg, nodeCount) {
@@ -248,6 +408,9 @@ function renderEmptyGraph(svg) {
   `;
 }
 
+// Custom graph layout:
+// DC on top, shelters/clinics/villages in spaced rows.
+// Clinics are pushed outward to reduce edge overlap.
 function generateNodePositions(
   names,
   distributionCenter,
@@ -255,9 +418,8 @@ function generateNodePositions(
 ) {
   const positions = {};
   const centerX = 350;
-  const topY = 70;
 
-  positions[distributionCenter] = { x: centerX, y: topY };
+  positions[distributionCenter] = { x: centerX, y: 80 };
 
   const shelters = [];
   const clinics = [];
@@ -280,41 +442,38 @@ function generateNodePositions(
     }
   });
 
-  placeRow(shelters, 180, positions);
-  placeRow(clinics, 300, positions);
-  placeRow(villages, 420, positions);
-  placeRow(others, 520, positions);
+  placeOffsetRow(shelters, 220, positions, 140, 560);
+  placeOffsetRow(clinics, 420, positions, 60, 640);
+  placeOffsetRow(villages, 620, positions, 140, 560);
+  placeOffsetRow(others, 740, positions, 120, 580);
 
   return positions;
 }
 
-function placeRow(nodeNames, y, positions) {
+function placeOffsetRow(nodeNames, y, positions, leftX, rightX) {
   if (!nodeNames.length) return;
 
-  const centerX = 350;
-
   if (nodeNames.length === 1) {
-    positions[nodeNames[0]] = { x: centerX, y };
+    positions[nodeNames[0]] = { x: leftX, y };
     return;
   }
 
-  const rowWidth = Math.min(500, 160 + (nodeNames.length - 1) * 140);
-  const startX = centerX - rowWidth / 2;
+  const rowWidth = rightX - leftX;
   const step = rowWidth / (nodeNames.length - 1);
 
   nodeNames.forEach((name, index) => {
     positions[name] = {
-      x: startX + step * index,
+      x: leftX + step * index,
       y,
     };
   });
 }
 
 function getGraphHeight(nodeCount) {
-  if (nodeCount <= 2) return 380;
-  if (nodeCount === 3) return 430;
-  if (nodeCount === 4) return 470;
-  return 520;
+  if (nodeCount <= 2) return 420;
+  if (nodeCount <= 4) return 560;
+  if (nodeCount <= 6) return 680;
+  return 780;
 }
 
 function getNodeRadius() {
@@ -352,8 +511,10 @@ function getTrimmedLineCoordinates(
 }
 
 function buildDistanceLabel(fromPos, toPos, distance) {
-  const midX = (fromPos.x + toPos.x) / 2;
-  const midY = (fromPos.y + toPos.y) / 2;
+  const t = 0.4;
+
+  const midX = fromPos.x + (toPos.x - fromPos.x) * t;
+  const midY = fromPos.y + (toPos.y - fromPos.y) * t;
 
   return `
     <rect
@@ -424,7 +585,7 @@ function buildNodeSvg(name, pos, distributionCenter, locationTypeMap = {}) {
 }
 
 function getRoadEdgeClass(status) {
-  const value = String(status || "open").toLowerCase();
+  const value = normalize(status, "open");
 
   if (value === "damaged") return "graph-edge graph-edge-damaged";
   if (value === "blocked") return "graph-edge graph-edge-blocked";
@@ -547,66 +708,71 @@ function updateRoadDropdowns(locations) {
 ========================= */
 
 function buildUrgencyBadge(urgency) {
-  const value = String(urgency || "").toLowerCase();
+  const value = normalize(urgency, "low");
 
-  if (value === "critical") {
-    return `<span class="urgency-badge urgency-critical">Critical</span>`;
-  }
+  const classes = {
+    critical: "urgency-critical",
+    high: "urgency-high",
+    medium: "urgency-medium",
+    low: "urgency-low",
+  };
 
-  if (value === "high") {
-    return `<span class="urgency-badge urgency-high">High</span>`;
-  }
+  const className = classes[value] || classes.low;
+  const label = classes[value] ? capitalize(value) : "Low";
 
-  if (value === "medium") {
-    return `<span class="urgency-badge urgency-medium">Medium</span>`;
-  }
-
-  return `<span class="urgency-badge urgency-low">Low</span>`;
+  return `<span class="urgency-badge ${className}">${label}</span>`;
 }
 
 function buildRoadStatusBadge(status) {
-  const value = String(status || "").toLowerCase();
+  const value = normalize(status, "blocked");
 
-  if (value === "open") {
-    return `<span class="status-badge status-open">Open</span>`;
-  }
+  const classes = {
+    open: "status-open",
+    damaged: "status-damaged",
+    blocked: "status-blocked",
+  };
 
-  if (value === "damaged") {
-    return `<span class="status-badge status-damaged">Damaged</span>`;
-  }
+  const className = classes[value] || classes.blocked;
+  const label = classes[value] ? capitalize(value) : "Blocked";
 
-  return `<span class="status-badge status-blocked">Blocked</span>`;
+  return `<span class="status-badge ${className}">${label}</span>`;
 }
 
 function buildStatusBadge(status) {
-  const value = String(status || "").toLowerCase();
+  const value = normalize(status);
 
-  if (value === "planned full supply") {
-    return `<span class="result-badge delivered">Planned Full Supply</span>`;
-  }
+  const statusMap = {
+    "planned full supply": {
+      className: "delivered",
+      label: "Planned Full Supply",
+    },
+    "planned partial supply": {
+      className: "partial",
+      label: "Planned Partial Supply",
+    },
+    "no supplies available": {
+      className: "partial",
+      label: "Reachable, No Supplies Left",
+    },
+    unreachable: {
+      className: "unreachable",
+      label: "Unreachable",
+    },
+  };
 
-  if (value === "planned partial supply") {
-    return `<span class="result-badge partial">Planned Partial Supply</span>`;
-  }
+  const badge = statusMap[value] || {
+    className: "partial",
+    label: status || "Pending",
+  };
 
-  if (value === "no supplies available") {
-    return `<span class="result-badge partial">Reachable, No Supplies Left</span>`;
-  }
-
-  if (value === "unreachable") {
-    return `<span class="result-badge unreachable">Unreachable</span>`;
-  }
-
-  return `<span class="result-badge partial">${status || "Pending"}</span>`;
+  return `<span class="result-badge ${badge.className}">${badge.label}</span>`;
 }
 
 function buildUnmetDemandHtml(rows) {
-  const unmetRows = rows.filter(
-    (row) =>
-      (row.unmetFood ?? 0) > 0 ||
-      (row.unmetMedicine ?? 0) > 0 ||
-      (row.unmetWater ?? 0) > 0 ||
-      (row.unmetBlankets ?? 0) > 0,
+  const unmetRows = rows.filter((row) =>
+    ["Food", "Medicine", "Water", "Blankets"].some(
+      (resource) => (row[`unmet${resource}`] ?? 0) > 0,
+    ),
   );
 
   if (!unmetRows.length) {
@@ -630,7 +796,7 @@ function buildSimulationLogHtml(rows, payload) {
   ];
 
   rows.forEach((row) => {
-    const status = String(row.status || "").toLowerCase();
+    const status = normalize(row.status);
 
     if (status === "unreachable") {
       entries.push(
@@ -641,27 +807,25 @@ function buildSimulationLogHtml(rows, payload) {
         `${row.location} is reachable, but no supplies were left by this point in the plan.`,
       );
     } else if (status === "planned partial supply") {
-      entries.push(
-        `Planned partial supply for ${row.location}: ` +
-          `${row.deliveredFood || 0} food, ` +
-          `${row.deliveredMedicine || 0} medicine, ` +
-          `${row.deliveredWater || 0} water, and ` +
-          `${row.deliveredBlankets || 0} blankets.`,
-      );
+      entries.push(buildSupplyLogEntry("Planned partial supply", row));
     } else {
-      entries.push(
-        `Planned full supply for ${row.location}: ` +
-          `${row.deliveredFood || 0} food, ` +
-          `${row.deliveredMedicine || 0} medicine, ` +
-          `${row.deliveredWater || 0} water, and ` +
-          `${row.deliveredBlankets || 0} blankets.`,
-      );
+      entries.push(buildSupplyLogEntry("Planned full supply", row));
     }
   });
 
   return entries
     .map((entry) => `<div class="log-entry">${entry}</div>`)
     .join("");
+}
+
+function buildSupplyLogEntry(prefix, row) {
+  return (
+    `${prefix} for ${row.location}: ` +
+    `${row.deliveredFood || 0} food, ` +
+    `${row.deliveredMedicine || 0} medicine, ` +
+    `${row.deliveredWater || 0} water, and ` +
+    `${row.deliveredBlankets || 0} blankets.`
+  );
 }
 
 function formatMode(mode) {
@@ -715,11 +879,7 @@ function buildLocationUrgencyMap(locations) {
 }
 
 function getResultRowClass(locationName, locationUrgencyMap) {
-  const urgency = String(locationUrgencyMap[locationName] || "").toLowerCase();
+  const urgency = normalize(locationUrgencyMap[locationName]);
 
-  if (urgency === "critical") {
-    return "critical-result-row";
-  }
-
-  return "";
+  return urgency === "critical" ? "critical-result-row" : "";
 }
