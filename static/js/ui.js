@@ -471,9 +471,9 @@ function placeOffsetRow(nodeNames, y, positions, leftX, rightX) {
 
 function getGraphHeight(nodeCount) {
   if (nodeCount <= 2) return 420;
-  if (nodeCount <= 4) return 560;
-  if (nodeCount <= 6) return 680;
-  return 780;
+  if (nodeCount <= 4) return 760;
+  if (nodeCount <= 6) return 820;
+  return 900;
 }
 
 function getNodeRadius() {
