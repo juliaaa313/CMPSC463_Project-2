@@ -111,7 +111,7 @@ def run_simulation(data):
             "unmetFood": unmet_food,
             "unmetMedicine": unmet_medicine,
             "unmetWater": unmet_water,
-            "unmetBlanklets": unmet_blankets,
+            "unmetBlankets": unmet_blankets,
             "status": status,
         })
 
