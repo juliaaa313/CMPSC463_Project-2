@@ -1,0 +1,85 @@
+{
+  "distributionCenter": "Distribution Center 1",
+  "supplies": {
+    "food": 500,
+    "medicine": 300,
+    "water": 400,
+    "blankets": 200
+  },
+  "locations": [
+    {
+      "id": "L1",
+      "name": "Shelter 1",
+      "type": "Shelter",
+      "demandFood": 80,
+      "demandMedicine": 20,
+      "demandWater": 60,
+      "demandBlankets": 25,
+      "urgency": "High"
+    },
+    {
+      "id": "L2",
+      "name": "Clinic 1",
+      "type": "Clinic",
+      "demandFood": 30,
+      "demandMedicine": 100,
+      "demandWater": 20,
+      "demandBlankets": 10,
+      "urgency": "Critical"
+    },
+    {
+      "id": "L3",
+      "name": "Village 1",
+      "type": "Village",
+      "demandFood": 120,
+      "demandMedicine": 25,
+      "demandWater": 90,
+      "demandBlankets": 35,
+      "urgency": "Low"
+    }
+  ],
+  "roads": [
+    {
+      "id": "R1",
+      "from": "Distribution Center 1",
+      "to": "Shelter 1",
+      "distance": 2,
+      "status": "open"
+    },
+    {
+      "id": "R2",
+      "from": "Shelter 1",
+      "to": "Clinic 1",
+      "distance": 3,
+      "status": "open"
+    },
+    {
+      "id": "R3",
+      "from": "Distribution Center 1",
+      "to": "Clinic 1",
+      "distance": 8,
+      "status": "open"
+    },
+    {
+      "id": "R4",
+      "from": "Distribution Center 1",
+      "to": "Village 1",
+      "distance": 5,
+      "status": "open"
+    },
+    {
+      "id": "R5",
+      "from": "Shelter 1",
+      "to": "Village 1",
+      "distance": 6,
+      "status": "open"
+    },
+    {
+      "id": "R6",
+      "from": "Clinic 1",
+      "to": "Village 1",
+      "distance": 2,
+      "status": "open"
+    }
+  ]
+}
